@@ -3,21 +3,21 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/database');
 
 const User = db.define('user', {
-  name: {
+  username: {
     type: DataTypes.STRING(50),
     allowNull: false,
     validate: {
       notEmpty: {
-        msg: 'Please provide a name'
+        msg: 'Please provide a username'
       },
       len: {
         args: [1, 50],
-        msg: 'Name cannot be more than 50 characters'
+        msg: 'Username cannot be more than 50 characters'
       }
     }
   },
   email: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(100),
     allowNull: false,
     unique: {
       args: true,
@@ -32,36 +32,33 @@ const User = db.define('user', {
       }
     }
   },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-      notEmpty: {
-        msg: 'Please provide a password'
-      },
-      len: {
-        args: [6],
-        msg: 'Password must be at least 6 characters'
-      }
-    }
+  password_hash: {
+    type: DataTypes.STRING(255),
+    allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('user', 'admin'),
-    defaultValue: 'user'
+    type: DataTypes.ENUM('competitor', 'admin', 'judge'),
+    defaultValue: 'competitor'
+  },
+  first_name: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+  last_name: {
+    type: DataTypes.STRING(50),
+    allowNull: true
   }
 }, {
+  tableName: 'users',
   timestamps: true,
+  underscored: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
   hooks: {
-    beforeCreate: async (user) => {
-      if (user.password) {
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
-      }
-    },
+    // Only needed for password updates in the future
     beforeUpdate: async (user) => {
-      if (user.changed('password')) {
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
+      if (user.changed('password_hash')) {
+        // Any password update logic if needed
       }
     }
   }
@@ -69,7 +66,7 @@ const User = db.define('user', {
 
 // Instance method to compare password
 User.prototype.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+  return await bcrypt.compare(candidatePassword, this.password_hash);
 };
 
 module.exports = User;

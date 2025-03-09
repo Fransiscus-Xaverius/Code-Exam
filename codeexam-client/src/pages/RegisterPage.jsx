@@ -9,7 +9,9 @@ import { useAuth } from '../hooks/useAuth';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
-    name: '',
+    first_name: '',
+    last_name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -28,7 +30,7 @@ const RegisterPage = () => {
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) {
+    if (!formData.username.trim()) {
       setError('Name is required');
       return false;
     }
@@ -69,7 +71,9 @@ const RegisterPage = () => {
 
     try {
       await register({
-        name: formData.name,
+        username: formData.username,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
         email: formData.email,
         password: formData.password
       });
@@ -94,13 +98,35 @@ const RegisterPage = () => {
 
         <form onSubmit={handleSubmit}>
           <InputField
-            label="Full Name"
+            label="Username"
             type="text"
-            name="name"
-            value={formData.name}
+            name="username"
+            value={formData.username}
             onChange={handleChange}
             required
-            placeholder="John Doe"
+            placeholder="Your Username"
+            className="mb-4"
+          />
+
+          <InputField
+            label="First Name"
+            type="text"
+            name="first_name"
+            value={formData.first_name}
+            onChange={handleChange}
+            required
+            placeholder="John"
+            className="mb-4"
+          />
+
+          <InputField
+            label="Last Name"
+            type="text"
+            name="last_name"
+            value={formData.last_name}
+            onChange={handleChange}
+            required
+            placeholder="Doe"
             className="mb-4"
           />
 

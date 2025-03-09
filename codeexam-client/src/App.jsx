@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-// import Dashboard from './components/Dashboard'; 
+import Dashboard from './pages/Dashboard'; 
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -35,11 +35,11 @@ function App() {
           <RegisterPage />
         </PublicRoute>
       } />
-      {/* <Route path="/dashboard" element={
+      <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />
         </ProtectedRoute>
-      } /> */}
+      } />
       <Route path="/" element={<Navigate to="/dashboard" />} />
     </Routes>
   );

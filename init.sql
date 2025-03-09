@@ -1,4 +1,3 @@
--- Users table with role column
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -12,7 +11,6 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Problems table
 CREATE TABLE problems (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -33,7 +31,6 @@ CREATE TABLE problems (
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
--- Competitions table
 CREATE TABLE competitions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -49,7 +46,6 @@ CREATE TABLE competitions (
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
--- Competition Problems junction table
 CREATE TABLE competition_problems (
     competition_id INT,
     problem_id INT,
@@ -59,7 +55,6 @@ CREATE TABLE competition_problems (
     FOREIGN KEY (problem_id) REFERENCES problems(id) ON DELETE CASCADE
 );
 
--- Competition Participants
 CREATE TABLE competition_participants (
     competition_id INT,
     user_id INT,
@@ -69,7 +64,6 @@ CREATE TABLE competition_participants (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Submissions table
 CREATE TABLE submissions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
@@ -92,7 +86,6 @@ CREATE TABLE submissions (
     FOREIGN KEY (judge_id) REFERENCES users(id)
 );
 
--- Leaderboard
 CREATE TABLE leaderboard (
     competition_id INT,
     user_id INT,
@@ -105,7 +98,6 @@ CREATE TABLE leaderboard (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Add indexes
 CREATE INDEX idx_submissions_user_id ON submissions(user_id);
 CREATE INDEX idx_submissions_problem_id ON submissions(problem_id);
 CREATE INDEX idx_submissions_competition_id ON submissions(competition_id);

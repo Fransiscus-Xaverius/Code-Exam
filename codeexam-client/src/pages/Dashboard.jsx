@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserCircle, Code, Trophy, Users, Settings, Clock, Database, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
+import { UserCircle, Code, Trophy, Users, Settings, Clock, Database, CheckCircle, XCircle, HelpCircle, LogOut } from 'lucide-react';
 
 const CodeExamDashboard = () => {
   const [problems, setProblems] = useState([]);
@@ -62,6 +62,12 @@ const CodeExamDashboard = () => {
     if (userRole === 'competitor') setUserRole('admin');
     else if (userRole === 'admin') setUserRole('judge');
     else setUserRole('competitor');
+  };
+
+  // Logout handler
+  const handleLogout = () => {
+    localStorage.removeItem('codeexam_token');
+    window.location.href = '/login';
   };
 
   // Difficulty badge component
@@ -368,12 +374,19 @@ const CodeExamDashboard = () => {
             ))}
           </ul>
         </nav>
-        <div className="absolute bottom-4 left-0 right-0 px-4">
+        <div className="absolute bottom-4 left-0 right-0 px-4 space-y-2">
           <button 
             onClick={toggleRole} 
             className="w-full bg-gray-700 text-white py-2 px-4 rounded hover:bg-gray-600 text-sm"
           >
             Switch Role (Demo)
+          </button>
+          <button 
+            onClick={handleLogout} 
+            className="w-full bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 text-sm flex items-center justify-center"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
           </button>
         </div>
       </div>
