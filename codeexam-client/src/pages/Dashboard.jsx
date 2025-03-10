@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserCircle, Code, Trophy, Users, Settings, Clock, Database, CheckCircle, XCircle, HelpCircle, LogOut } from 'lucide-react';
+import axios from 'axios'; // Make sure to import axios
 
 const CodeExamDashboard = () => {
   const [problems, setProblems] = useState([]);
@@ -7,19 +8,20 @@ const CodeExamDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [competitionStatus, setCompetitionStatus] = useState('upcoming'); // 'upcoming', 'active', 'ended'
+  const [error, setError] = useState(null); // Add error state
   
   // Mock data
-  const mockProblems = [
-    { id: 1, title: 'Two Sum', difficulty: 'Easy', solved: true, points: 100, submissions: 0, acceptance: '0%' },
-    { id: 2, title: 'Longest Substring', difficulty: 'Medium', solved: false, points: 200, submissions: 0, acceptance: '0%' },
-    { id: 3, title: 'Merge K Sorted Lists', difficulty: 'Hard', solved: false, points: 300, submissions: 0, acceptance: '0%' },
-    { id: 4, title: 'Valid Parentheses', difficulty: 'Easy', solved: false, points: 100, submissions: 0, acceptance: '0%' },
-    { id: 5, title: 'Binary Tree Inorder', difficulty: 'Medium', solved: false, points: 200, submissions: 0, acceptance: '0%' },
-    { id: 6, title: 'Minimum Path Sum', difficulty: 'Medium', solved: false, points: 200, submissions: 0, acceptance: '0%' },
-    { id: 7, title: 'Trapping Rain Water', difficulty: 'Hard', solved: false, points: 300, submissions: 0, acceptance: '0%' },
-    { id: 8, title: 'LRU Cache', difficulty: 'Hard', solved: false, points: 300, submissions: 0, acceptance: '0%' },
-    { id: 9, title: 'Word Search', difficulty: 'Medium', solved: false, points: 200, submissions: 0, acceptance: '0%' },
-  ];
+  // const mockProblems = [
+  //   { id: 1, title: 'Two Sum', difficulty: 'Easy', solved: true, points: 100, submissions: 0, acceptance: '0%' },
+  //   { id: 2, title: 'Longest Substring', difficulty: 'Medium', solved: false, points: 200, submissions: 0, acceptance: '0%' },
+  //   { id: 3, title: 'Merge K Sorted Lists', difficulty: 'Hard', solved: false, points: 300, submissions: 0, acceptance: '0%' },
+  //   { id: 4, title: 'Valid Parentheses', difficulty: 'Easy', solved: false, points: 100, submissions: 0, acceptance: '0%' },
+  //   { id: 5, title: 'Binary Tree Inorder', difficulty: 'Medium', solved: false, points: 200, submissions: 0, acceptance: '0%' },
+  //   { id: 6, title: 'Minimum Path Sum', difficulty: 'Medium', solved: false, points: 200, submissions: 0, acceptance: '0%' },
+  //   { id: 7, title: 'Trapping Rain Water', difficulty: 'Hard', solved: false, points: 300, submissions: 0, acceptance: '0%' },
+  //   { id: 8, title: 'LRU Cache', difficulty: 'Hard', solved: false, points: 300, submissions: 0, acceptance: '0%' },
+  //   { id: 9, title: 'Word Search', difficulty: 'Medium', solved: false, points: 200, submissions: 0, acceptance: '0%' },
+  // ];
 
   const mockCompetitionDetails = {
     name: "Spring Coding Challenge 2025",
@@ -28,14 +30,37 @@ const CodeExamDashboard = () => {
     participants: 256,
     leaderboardVisible: true
   };
+  // /api/problems
 
   // Simulation of data fetching
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setProblems(mockProblems);
-      setIsLoading(false);
-    }, 1000);
+    // Fetch problems from API
+    const fetchProblems = async () => {
+      try {
+        setIsLoading(true);
+        // Get token from localStorage
+        const token = localStorage.getItem('codeexam_token');
+        
+        // Make API request with authorization header
+        const response = await axios.get('/api/problems', {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : ''
+          }
+        });
+        
+        // Set problems from response
+        setProblems(response.data.problems);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching problems:', err);
+        setError('Failed to load problems. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Call the fetch function
+    fetchProblems();
 
     // Update competition status based on current time
     const timer = setInterval(() => {
