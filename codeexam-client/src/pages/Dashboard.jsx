@@ -110,7 +110,7 @@ const CodeExamDashboard = () => {
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm">{problem.points}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm">
-                  <button onClick={() => navigate(`/problem/${problem.id}`)} className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-xs">
+                  <button onClick={() => navigate(`/solve/${problem.id}`)} className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-xs">
                     Solve
                   </button>
                 </td>

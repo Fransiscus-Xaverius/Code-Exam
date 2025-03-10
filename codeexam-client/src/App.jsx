@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard'; 
+import SolvePage from './pages/SolvePage';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -38,6 +39,11 @@ function App() {
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path='/solve/:id' element={
+        <ProtectedRoute>
+          <SolvePage />
         </ProtectedRoute>
       } />
       <Route path="/" element={<Navigate to="/dashboard" />} />
