@@ -6,7 +6,7 @@ const { createProblem, getProblem, getProblems, updateProblem, deleteProblem} = 
 // @route POST  /api/problems/new
 // @desc Create new problem
 // @access Admin
-router.post('/new', protect(['admin']), createProblem);
+router.post('/', protect(['admin']), createProblem);
 
 router.get('/', protect(), getProblems);
 

@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard'; 
 import SolvePage from './pages/SolvePage';
+import ProblemFormPage from './pages/ProblemFormPage';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -46,6 +47,16 @@ function App() {
           <SolvePage />
         </ProtectedRoute>
       } />
+      <Route path='/problem/new' element={
+        <ProtectedRoute>
+          <ProblemFormPage />
+        </ProtectedRoute>
+      }/>
+      <Route path='/problem/:id' element={
+        <ProtectedRoute>
+          <ProblemFormPage />
+        </ProtectedRoute>
+      }/>      
       <Route path="/" element={<Navigate to="/dashboard" />} />
     </Routes>
   );
