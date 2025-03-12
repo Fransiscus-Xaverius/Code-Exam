@@ -13,13 +13,14 @@ const sequelize = new Sequelize(
     dialect: 'mysql',
     port: process.env.DB_PORT || 3306,
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    }
+    // pool: {
+    //   max: 5,
+    //   min: 0,
+    //   acquire: 30000,
+    //   idle: 10000
+    // }
   }
 );
+
 
 module.exports = sequelize;
