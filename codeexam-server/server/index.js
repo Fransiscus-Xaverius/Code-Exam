@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
 const problemRoutes = require('./routes/problem');
+const competitionRoutes = require('./routes/competition');
 const { errorHandler } = require('./middleware/errorHandler');
 const db = require('./config/database');
 
@@ -18,6 +19,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
+app.use('/api/competitions', competitionRoutes);
 
 // Error Handler
 app.use(errorHandler);
