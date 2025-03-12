@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Save, HelpCircle, UserCircle, Code, Trophy, Users, Settings, Database, CheckCircle, LogOut } from 'lucide-react';
+import { Save, HelpCircle } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
+import Sidebar from '../components/Sidebar'; // Import the Sidebar component
 
 const ProblemFormPage = () => {
   const navigate = useNavigate();
@@ -172,86 +173,27 @@ const ProblemFormPage = () => {
     return tooltips[field] || '';
   };
   
-  // Toggle role for demo purposes (from your dashboard code)
+  // Toggle role for demo purposes
   const toggleRole = () => {
     if (userRole === 'competitor') setUserRole('admin');
     else if (userRole === 'admin') setUserRole('judge');
     else setUserRole('competitor');
   };
   
-  // Logout handler (from your dashboard code)
+  // Logout handler
   const handleLogout = () => {
     localStorage.removeItem('codeexam_token');
     window.location.href = '/login';
   };
   
-  // Sidebar navigation (from your dashboard code)
-  const renderSidebar = () => {
-    const commonItems = [
-      { icon: <Code className="h-5 w-5" />, label: 'Problems' },
-      { icon: <Trophy className="h-5 w-5" />, label: 'Leaderboard' },
-    ];
-    
-    const roleSpecificItems = {
-      competitor: [
-        { icon: <UserCircle className="h-5 w-5" />, label: 'My Profile' },
-        { icon: <Database className="h-5 w-5" />, label: 'My Submissions' },
-      ],
-      admin: [
-        { icon: <Users className="h-5 w-5" />, label: 'Participants' },
-        { icon: <Settings className="h-5 w-5" />, label: 'Competition Settings' },
-        { icon: <Database className="h-5 w-5" />, label: 'All Submissions' },
-      ],
-      judge: [
-        { icon: <Database className="h-5 w-5" />, label: 'Review Submissions' },
-        { icon: <Users className="h-5 w-5" />, label: 'Judge Panel' },
-      ]
-    };
-    
-    const items = [...commonItems, ...roleSpecificItems[userRole]];
-    
-    return (
-      <div className="bg-gray-800 text-white w-64 h-screen fixed left-0 top-0">
-        <div className="p-4 border-b border-gray-700">
-          <h1 className="text-xl font-bold">CodeExam</h1>
-          <div className="text-sm text-gray-400 mt-1">
-            Logged in as <span className="font-medium text-gray-200 capitalize">{userRole}</span>
-          </div>
-        </div>
-        <nav className="mt-4">
-          <ul>
-            {items.map((item, index) => (
-              <li key={index}>
-                <a href="#" className="flex items-center px-4 py-3 hover:bg-gray-700">
-                  {item.icon}
-                  <span className="ml-3">{item.label}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="absolute bottom-4 left-0 right-0 px-4 space-y-2">
-          <button 
-            onClick={toggleRole} 
-            className="w-full bg-gray-700 text-white py-2 px-4 rounded hover:bg-gray-600 text-sm"
-          >
-            Switch Role (Demo)
-          </button>
-          <button 
-            onClick={handleLogout} 
-            className="w-full bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 text-sm flex items-center justify-center"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </button>
-        </div>
-      </div>
-    );
-  };
-  
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {renderSidebar()}
+      <Sidebar 
+        userRole={userRole} 
+        toggleRole={toggleRole} 
+        handleLogout={handleLogout} 
+      />
+      
       <div className="ml-64 flex-1 p-6">
         <div className="mb-6 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">
