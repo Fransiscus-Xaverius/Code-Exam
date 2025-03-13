@@ -146,7 +146,7 @@ const CompetitionFormPage = () => {
       <div className="ml-64 flex-1 p-6">
         <div className="max-w-4xl mx-auto">
           <Card className="p-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-6">
+            <h1 className="text-2xl font-bold mb-6">
               {isEditMode ? 'Edit Competition' : 'Create Competition'}
             </h1>
 
