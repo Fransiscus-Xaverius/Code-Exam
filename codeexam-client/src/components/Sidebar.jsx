@@ -12,7 +12,7 @@ const Sidebar = () => {
   // Define navigation items based on user role
   const commonItems = [
     { icon: <Code className="h-5 w-5" />, label: 'Problems', path: '/problems' },
-    { icon: <Trophy className="h-5 w-5" />, label: 'Competitions', path: '/leaderboard' },
+    { icon: <Trophy className="h-5 w-5" />, label: 'Competitions', path: '/competitions' },
   ];
   
   const roleSpecificItems = {

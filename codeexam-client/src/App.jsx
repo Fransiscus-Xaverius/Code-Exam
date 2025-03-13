@@ -10,6 +10,9 @@ import Dashboard from './pages/Dashboard';
 import SolvePage from './pages/SolvePage';
 import ProblemFormPage from './pages/ProblemFormPage';
 import NotFoundPage from './pages/NotFoundPage';
+import CompetitionListPage from './pages/competition/CompetitionListPage';
+import CompetitionDetailsPage from './pages/competition/CompetitionDetailsPage';
+import CompetitionFormPage from './pages/competition/CompetitionFormPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useSelector(state => state.auth);
@@ -77,6 +80,30 @@ const AppRoutes = () => {
         </AdminRoute>
       }/>
       
+      <Route path="/competitions" element={
+        <ProtectedRoute>
+          <CompetitionListPage />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/competitions/:id" element={
+        <ProtectedRoute>
+          <CompetitionDetailsPage />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/competition/new" element={
+        <AdminRoute>
+          <CompetitionFormPage />
+        </AdminRoute>
+      } />
+
+      <Route path="/competition/edit/:id" element={
+        <AdminRoute>
+          <CompetitionFormPage />
+        </AdminRoute>
+      } />
+
       <Route path="/" element={<Navigate to="/dashboard" />} />
       <Route path="*" element={<Navigate to="/404" />} />
     </Routes>
