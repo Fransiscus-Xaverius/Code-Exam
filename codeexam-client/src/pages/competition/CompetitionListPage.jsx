@@ -27,33 +27,26 @@ const CompetitionListPage = () => {
   const fetchCompetitions = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      const token = localStorage.getItem('codeexam_token');
-      const response = await axios.get(`/api/competitions?page=${currentPage}&search=${searchTerm}`, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : ''
-        }
+      const params = new URLSearchParams({
+        page: currentPage,
+        search: searchTerm,
+        filter
       });
       
+      const response = await axios.get(`/api/competitions?${params}`);
       setCompetitions(response.data.data);
-      setTotalPages(Math.ceil(response.data.count / 10));
+      setTotalPages(response.data.totalPages);
     } catch (err) {
-      setError('Failed to load competitions. Please try again.');
-      console.error('Error fetching competitions:', err);
+      setError('Failed to load competitions');
     } finally {
       setLoading(false);
     }
   };
 
-  const getCompetitionStatus = (startTime, endTime) => {
+  // Update status calculation
+  const getCompetitionStatus = (start, end) => {
     const now = new Date();
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-
-    if (now < start) return 'upcoming';
-    if (now > end) return 'past';
-    return 'ongoing';
+    return now < start ? 'upcoming' : now > end ? 'past' : 'ongoing';
   };
 
   const formatDate = (dateString) => {

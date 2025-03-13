@@ -79,23 +79,29 @@ const CompetitionFormPage = () => {
       return false;
     }
 
-    const startTime = new Date(formData.start_time);
-    const endTime = new Date(formData.end_time);
-
-    if (startTime >= endTime) {
+    const start = new Date(formData.start_time);
+    const end = new Date(formData.end_time);
+    
+    if (start >= end) {
       setError('End time must be after start time');
       return false;
     }
-
     return true;
   };
-
+  
+  // Update form submission handler
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
+    
     try {
       setSubmitting(true);
+      const payload = {
+        ...formData,
+        start_time: new Date(formData.start_time).toISOString(),
+        end_time: new Date(formData.end_time).toISOString()
+      };
+      
       setError(null);
       
       const token = localStorage.getItem('codeexam_token');

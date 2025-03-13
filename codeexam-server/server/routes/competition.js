@@ -45,7 +45,7 @@ router.post('/:id/join', protect(), joinCompetition);
 // @route   GET /api/competitions/:id/participants
 // @desc    Get participants of a competition
 // @access  Private (Admin only)
-router.get('/:id/participants', protect(['admin']), getCompetitionParticipants);
+router.get('/:id/participants', protect(['admin','judge']), getCompetitionParticipants);
 
 // @route   GET /api/competitions/:id/registration
 // @desc    Check if user is registered for a competition

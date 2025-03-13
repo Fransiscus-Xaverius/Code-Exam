@@ -130,37 +130,38 @@ const RegisterPage = () => {
             className="mb-4"
           />
 
+          // In the form section:
           <InputField
-            label="Email Address"
-            type="email"
+            label="Email"
             name="email"
+            type="email"
             value={formData.email}
             onChange={handleChange}
             required
-            placeholder="youremail@example.com"
-            className="mb-4"
+            placeholder="Your email"
+            autoComplete="email"
           />
-
+          
           <InputField
             label="Password"
-            type="password"
             name="password"
+            type="password"
             value={formData.password}
             onChange={handleChange}
             required
-            placeholder="Choose a password"
-            className="mb-4"
+            placeholder="Create a password"
+            autoComplete="new-password"
           />
-
+          
           <InputField
             label="Confirm Password"
-            type="password"
             name="confirmPassword"
+            type="password"
             value={formData.confirmPassword}
             onChange={handleChange}
             required
             placeholder="Confirm your password"
-            className="mb-6"
+            autoComplete="new-password"
           />
 
           <Button

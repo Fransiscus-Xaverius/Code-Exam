@@ -11,8 +11,8 @@ import Sidebar from '../../components/Sidebar';
 const CompetitionDetailsPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { userRole } = useSelector(state => state.auth);
-
+  const { user, token, userRole } = useSelector(state => state.auth); // Changed from userRole to user
+  // alert(token)
   const [competition, setCompetition] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,26 +24,40 @@ const CompetitionDetailsPage = () => {
     fetchCompetitionData();
   }, [id]);
 
+  // Update the fetch function
   const fetchCompetitionData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('codeexam_token');
-      
-      const [competitionRes, participantsRes] = await Promise.all([
-        axios.get(`/api/competitions/${id}`, {
-          headers: { Authorization: token ? `Bearer ${token}` : '' }
-        }),
-        axios.get(`/api/competitions/${id}/participants`, {
-          headers: { Authorization: token ? `Bearer ${token}` : '' }
-        })
-      ]);
+      // const token = localStorage.getItem('codeexam_token');
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
+
+      const requests = [
+        axios.get(`/api/competitions/${id}`, { headers }) // Add headers here
+      ];
+
+      if (user?.role === 'admin' || user?.role === 'judge') {
+        requests.push(
+          axios.get(`/api/competitions/${id}/participants`, { headers }) // And here
+        );
+      }
+
+      const [competitionRes, participantsRes] = await Promise.all(requests);
 
       setCompetition(competitionRes.data.data);
-      setParticipants(participantsRes.data.participants);
-      setRegistered(participantsRes.data.participants.some(p => p.id === userRole.id));
+      console.log(participantsRes.data.data)
+      if (participantsRes) {
+        // Match backend response structure
+        setParticipants(participantsRes.data.data || []);
+        setRegistered((participantsRes.data.data || []).some(p => p.user_id === user?.id));
+      }
     } catch (err) {
-      setError('Failed to load competition data. Please try again.');
-      console.error('Error fetching competition:', err);
+      console.error('Error fetching competition data:', err);
+      // Handle 401 specifically
+      if (err.response?.status === 401) {
+        setError('Please login to view this content');
+      } else {
+        setError('Failed to load competition data');
+      }
     } finally {
       setLoading(false);
     }
@@ -53,8 +67,8 @@ const CompetitionDetailsPage = () => {
     try {
       setRegistering(true);
       const token = localStorage.getItem('codeexam_token');
-      
-      await axios.post(`/api/competitions/${id}/register`, {}, {
+
+      await axios.post(`/api/competitions/${id}/join`, {}, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
 
@@ -70,7 +84,7 @@ const CompetitionDetailsPage = () => {
 
   const getCompetitionStatus = () => {
     if (!competition) return '';
-    
+
     const now = new Date();
     const start = new Date(competition.start_time);
     const end = new Date(competition.end_time);
@@ -131,7 +145,7 @@ const CompetitionDetailsPage = () => {
             <div>
               <h1 className="text-2xl font-bold text-gray-800">{competition.name}</h1>
               <span className={`mt-2 inline-block px-3 py-1 rounded-full text-sm font-medium ${statusColors[status]}`}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {status.charAt(0).toUpperCase() + status?.slice(1)}
               </span>
             </div>
             {userRole === 'admin' && (
@@ -211,7 +225,7 @@ const CompetitionDetailsPage = () => {
                         <div className="flex items-center">
                           <div className="h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center">
                             <span className="text-sm font-medium">
-                              {participant.username.charAt(0).toUpperCase()}
+                              {participant.user.username.charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <span className="ml-3 font-medium text-gray-700">{participant.username}</span>

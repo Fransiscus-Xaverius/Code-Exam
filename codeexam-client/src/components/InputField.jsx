@@ -4,6 +4,8 @@ export const InputField = ({
   label, 
   type = 'text', 
   className = '', 
+  // Add autocomplete prop with default value
+  autoComplete = type === 'password' ? 'current-password' : 'on',
   ...props 
 }) => {
   return (
@@ -21,6 +23,8 @@ export const InputField = ({
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
           text-gray-700
         "
+        // Pass the autocomplete attribute
+        autoComplete={autoComplete}
         {...props}
       />
     </div>

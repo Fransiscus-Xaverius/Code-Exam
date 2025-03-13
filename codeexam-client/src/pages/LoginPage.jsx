@@ -65,15 +65,17 @@ const LoginPage = () => {
         
         {error && <Alert type="error" message={error} className="mb-4" />}
         
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {error && <Alert type="error" message={error} />}
+          
           <InputField
-            label="Email Address"
+            label="Email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            placeholder="youremail@example.com"
-            className="mb-4"
+            placeholder="Your email"
+            autoComplete="email"
           />
           
           <InputField
@@ -83,7 +85,7 @@ const LoginPage = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
             placeholder="Your password"
-            className="mb-6"
+            autoComplete="current-password"
           />
           
           <Button

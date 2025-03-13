@@ -5,7 +5,9 @@ export const Button = ({
   type = 'button', 
   fullWidth = false, 
   disabled = false, 
-  className = '', 
+  className = '',
+  // Add leftIcon prop
+  leftIcon = null,
   ...props 
 }) => {
   return (
@@ -25,6 +27,8 @@ export const Button = ({
       `}
       {...props}
     >
+      {/* Render the icon if provided */}
+      {leftIcon && <span className="mr-2 inline-flex items-center">{leftIcon}</span>}
       {children}
     </button>
   );

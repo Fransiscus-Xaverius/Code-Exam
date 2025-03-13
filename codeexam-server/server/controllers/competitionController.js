@@ -1,6 +1,9 @@
 const Competition = require('../models/Competition');
 const CompetitionParticipant = require('../models/CompetitionParticipant');
 const User = require('../models/User');
+const { Op } = require('sequelize');
+
+
 
 // @desc    Create a new competition
 // @route   POST /api/competitions
@@ -322,64 +325,47 @@ exports.joinCompetition = async (req, res, next) => {
     const competition = await Competition.findByPk(req.params.id);
     
     if (!competition) {
-      return res.status(404).json({
-        success: false,
-        message: 'Competition not found'
-      });
-    }
-    
-    // Check if competition is public
-    if (!competition.is_public) {
-      return res.status(403).json({
-        success: false,
-        message: 'This competition is not public'
-      });
+      return res.status(404).json({ success: false, message: 'Competition not found' });
     }
     
     // Check if registration is required
     if (!competition.registration_required) {
-      return res.status(400).json({
-        success: false,
-        message: 'Registration is not required for this competition'
+      return res.status(400).json({ 
+        success: false, 
+        message: 'This competition does not require registration' 
       });
     }
-    
-    // Check if competition has already started
-    const now = new Date();
-    if (now > competition.end_time) {
-      return res.status(400).json({
-        success: false,
-        message: 'This competition has already ended'
-      });
-    }
-    
-    // Check if user is already registered
-    const existingRegistration = await CompetitionParticipant.findOne({
+
+    // Check existing participation
+    const existing = await CompetitionParticipant.findOne({
       where: {
-        competition_id: competition.id,
-        user_id: req.user.id
+        user_id: req.user.id,
+        competition_id: competition.id
       }
     });
-    
-    if (existingRegistration) {
-      return res.status(400).json({
-        success: false,
-        message: 'You are already registered for this competition'
+
+    if (existing) {
+      return res.status(409).json({ 
+        success: false, 
+        message: 'Already registered for this competition' 
       });
     }
-    
-    // Register user for competition
+
+    // Register user
     await CompetitionParticipant.create({
+      user_id: req.user.id,
       competition_id: competition.id,
-      user_id: req.user.id
+      registered_at: new Date()
     });
-    
-    res.status(200).json({
-      success: true,
-      message: 'Successfully registered for competition'
-    });
+
+    res.json({ success: true });
+
   } catch (error) {
-    next(error);
+    console.error('Join competition error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error during registration' 
+    });
   }
 };
 
