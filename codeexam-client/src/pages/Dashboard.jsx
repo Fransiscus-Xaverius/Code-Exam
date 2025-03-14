@@ -1,267 +1,342 @@
 import React, { useState, useEffect } from 'react';
-import { UserCircle, Code, Trophy, Users, Settings, Database, CheckCircle, HelpCircle, LogOut } from 'lucide-react';
+import { UserCircle, Code, Trophy, Users, Settings, Database, CheckCircle, HelpCircle, LogOut, Edit, Trash2, Plus, Search, Filter } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { toggleUserRole, logout } from '../redux/slices/authSlice';
 import Sidebar from '../components/Sidebar';
+import { ConfirmationModal } from '../components/Modal';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { SearchBar } from '../components/SearchBar';
 
 const CodeExamDashboard = () => {
   const [problems, setProblems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, problem: null });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [difficultyFilter, setDifficultyFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('title');
+  const [sortOrder, setSortOrder] = useState('asc');
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
-  // Get user data from Redux store
+
   const { userRole, isAuthenticated, user, token } = useSelector(state => state.auth);
 
-  // Fetch problems from API
   useEffect(() => {
-    const fetchProblems = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Use token from Redux store instead of localStorage
-        const response = await axios.get('/api/problems', {
-          headers: {
-            Authorization: token ? `Bearer ${token}` : ''
-          }
-        });
-        
-        setProblems(response.data.problems);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching problems:', err);
-        setError('Failed to load problems. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchProblems();
-  }, [token]);
+  }, [token, searchTerm, difficultyFilter, sortBy, sortOrder]);
 
-  // Toggle role handler using Redux
+  const fetchProblems = async () => {
+    try {
+      setIsLoading(true);
+      const params = new URLSearchParams({
+        search: searchTerm,
+        difficulty: difficultyFilter,
+        sortBy,
+        sortOrder
+      });
+
+      const response = await axios.get(`/api/problems?${params}`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+
+      setProblems(response.data.problems || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching problems:', err);
+      setError('Failed to load problems. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleToggleRole = () => {
     dispatch(toggleUserRole());
   };
 
-  // Logout handler using Redux
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
   };
 
-  // Difficulty badge component
+  const handleDeleteClick = (problem) => {
+    setDeleteModal({ isOpen: true, problem });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await axios.delete(`/api/problems/${deleteModal.problem.id}`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+
+      setProblems(problems.filter(p => p.id !== deleteModal.problem.id));
+      setDeleteModal({ isOpen: false, problem: null });
+    } catch (err) {
+      console.error('Error deleting problem:', err);
+      setError('Failed to delete problem. Please try again.');
+    }
+  };
+
   const DifficultyBadge = ({ difficulty }) => {
-    const colorClass = 
-      difficulty === 'Easy' ? 'bg-green-500' : 
-      difficulty === 'Medium' ? 'bg-yellow-500' : 'bg-red-500';
-    
+    const styles = {
+      Easy: 'bg-green-100 text-green-800 border-green-200',
+      Medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      Hard: 'bg-red-100 text-red-800 border-red-200'
+    };
+
     return (
-      <span className={`${colorClass} text-white text-xs px-2 py-1 rounded-full`}>
+      <span className={`${styles[difficulty]} text-xs px-2.5 py-0.5 rounded-full border`}>
         {difficulty}
       </span>
     );
   };
 
-  // Status indicator component
-  const StatusIndicator = ({ solved }) => {
-    return solved ? 
-      <CheckCircle className="text-green-500 h-5 w-5" /> : 
-      <HelpCircle className="text-gray-400 h-5 w-5" />;
-  };
+  const StatusIndicator = ({ solved }) => (
+    <div className="flex items-center">
+      {solved ? (
+        <div className="flex items-center text-green-600">
+          <CheckCircle size={16} className="mr-1" />
+          <span className="text-sm">Solved</span>
+        </div>
+      ) : (
+        <div className="flex items-center text-gray-400">
+          <HelpCircle size={16} className="mr-1" />
+          <span className="text-sm">Unsolved</span>
+        </div>
+      )}
+    </div>
+  );
 
-  // Render different tables based on role
+  const renderFilters = () => (
+    <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <SearchBar
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="Search problems..."
+        className="flex-1"
+      />
+
+      <select
+        value={difficultyFilter}
+        onChange={(e) => setDifficultyFilter(e.target.value)}
+        className="px-3 py-2 border rounded-lg bg-white"
+      >
+        <option value="all">All Difficulties</option>
+        <option value="Easy">Easy</option>
+        <option value="Medium">Medium</option>
+        <option value="Hard">Hard</option>
+      </select>
+
+      <select
+        value={`${sortBy}-${sortOrder}`}
+        onChange={(e) => {
+          const [newSortBy, newSortOrder] = e.target.value.split('-');
+          setSortBy(newSortBy);
+          setSortOrder(newSortOrder);
+        }}
+        className="px-3 py-2 border rounded-lg bg-white"
+      >
+        <option value="title-asc">Title (A-Z)</option>
+        <option value="title-desc">Title (Z-A)</option>
+        <option value="difficulty-asc">Difficulty (Easy-Hard)</option>
+        <option value="difficulty-desc">Difficulty (Hard-Easy)</option>
+        <option value="points-asc">Points (Low-High)</option>
+        <option value="points-desc">Points (High-Low)</option>
+      </select>
+    </div>
+  );
+
   const renderProblemsList = () => {
     if (isLoading) {
-      return <div className="text-center py-4">Loading problems...</div>;
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      );
     }
-    
+
     if (error) {
-      return <div className="text-center py-4 text-red-500">{error}</div>;
-    }
-    
-    if (userRole === 'competitor') {
       return (
-        <table className="min-w-full bg-white">
-          <thead>
-            <tr className="bg-gray-100 border-b">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {problems.map((problem) => (
-              <tr key={problem.id} className="hover:bg-gray-50 cursor-pointer">
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <StatusIndicator solved={problem.solved} />
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap font-medium">{problem.title}</td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <DifficultyBadge difficulty={problem.difficulty} />
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm">{problem.points}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm">
-                  <button onClick={() => navigate(`/solve/${problem.id}`)} className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-xs">
-                    Solve
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      );
-    } else if (userRole === 'admin') {
-      return (
-        <table className="min-w-full bg-white">
-          <thead>
-            <tr className="bg-gray-100 border-b">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submissions</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {problems.map((problem) => (
-              <tr key={problem.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 whitespace-nowrap">{problem.id}</td>
-                <td className="px-4 py-3 whitespace-nowrap font-medium">{problem.title}</td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <DifficultyBadge difficulty={problem.difficulty} />
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm">{problem.points}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm">{problem.submissions}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm space-x-2">
-                  <button 
-                    className="inline-flex items-center px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs transition-colors"
-                    onClick={()=> navigate(`/problem/edit/${problem.id}`)}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Edit
-                  </button>
-                  <button 
-                    className="inline-flex items-center px-3 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 text-xs transition-colors"
-                    onClick={() => {
-                      if (window.confirm('Are you sure you want to delete this problem?')) {
-                        // Add delete logic here
-                        console.log('Delete problem:', problem.id);
-                      }
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            <tr>
-              <td colSpan="6" className="px-4 py-3">
-                <button 
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                  onClick={() => navigate('/problem/new')}
-                >
-                  Add New Problem
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      );
-    } else if (userRole === 'judge') {
-      return (
-        <table className="min-w-full bg-white">
-          <thead>
-            <tr className="bg-gray-100 border-b">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Problem ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submissions</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acceptance</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Review</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {problems.map((problem) => (
-              <tr key={problem.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 whitespace-nowrap">{problem.id}</td>
-                <td className="px-4 py-3 whitespace-nowrap font-medium">{problem.title}</td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <DifficultyBadge difficulty={problem.difficulty} />
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm">{problem.submissions}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm">{problem.acceptance}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm">
-                  <button className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-xs">
-                    View Submissions
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Card className="p-6 text-center">
+          <div className="text-red-500 mb-4">{error}</div>
+          <Button onClick={fetchProblems}>Try Again</Button>
+        </Card>
       );
     }
+
+    if (problems.length === 0) {
+      return (
+        <Card className="p-8 text-center">
+          <div className="text-gray-500 mb-4">No problems found</div>
+          {userRole === 'admin' && (
+            <Button
+              onClick={() => navigate('/problems/new')}
+              className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out rounded-lg shadow-sm hover:shadow-md"
+            >
+              <Plus size={18} className="mr-2 animate-pulse" />
+              <span className="relative inline-block">
+                Add New Problem
+                <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+              </span>
+            </Button>
+          )}
+        </Card>
+      );
+    }
+
+    const tableHeaders = userRole === 'admin' ? (
+      <tr className="bg-gray-50 border-b">
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+      </tr>
+    ) : (
+      <tr className="bg-gray-50 border-b">
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+      </tr>
+    );
+
+    return (
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead>{tableHeaders}</thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {problems.map((problem) => (
+                <tr key={problem.id} className="hover:bg-gray-50 transition-colors">
+                  {userRole === 'admin' ? (
+                    <>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{problem.title}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <DifficultyBadge difficulty={problem.difficulty} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {problem.points} points
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(problem.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate(`/problems/edit/${problem.id}`)}
+                        >
+                          <Edit size={14} className="mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleDeleteClick(problem)}
+                        >
+                          <Trash2 size={14} className="mr-1" />
+                          Delete
+                        </Button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <StatusIndicator solved={problem.solved} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{problem.title}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <DifficultyBadge difficulty={problem.difficulty} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {problem.points} points
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => navigate(`/solve/${problem.id}`)}
+                        >
+                          Solve Problem
+                        </Button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="ml-64 flex-1 p-6">
-        <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <div className="flex items-center space-x-4">
-            <div>
-              <span className="mr-2 text-sm text-gray-600">Current Role:</span>
-              <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-sm capitalize">{userRole}</span>
-            </div>
-            {/* For demo purposes - toggles between roles */}
-            <button 
-              onClick={handleToggleRole} 
-              className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300"
-            >
-              Switch Role
-            </button>
-            {/* Display username if available */}
-            {user && (
-              <div className="flex items-center">
-                <UserCircle className="w-5 h-5 mr-1 text-gray-700" />
-                <span className="text-sm text-gray-700">{user.name || user.email}</span>
+      <div className="flex-1 ml-64">
+        <div className="p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-8 flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Welcome back, {user?.username || 'User'}
+                </p>
               </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="bg-white rounded shadow-md overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b flex justify-between items-center">
-            <h2 className="font-semibold">List of Problems</h2>
-            {userRole === 'admin' && (
-              <button 
-                className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
-                onClick={() => navigate('/problem/new')}
-              >
-                Add Problem
-              </button>
-            )}
-          </div>
-          <div className="overflow-x-auto">
+
+              <div className="flex items-center space-x-4">
+                {userRole === 'admin' && (
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate('/problems/new')}
+                    className="group relative inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <Plus 
+                      size={18} 
+                      className="mr-2 transition-transform group-hover:rotate-90 duration-300" 
+                    />
+                    <span className="relative inline-block">
+                      Add New Problem
+                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                      </span>
+                    </span>
+                    <span className="absolute -z-10 inset-0 rounded-lg bg-gradient-to-br from-blue-600/50 to-blue-700/50 blur opacity-0 group-hover:opacity-75 transition-opacity duration-200"></span>
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {renderFilters()}
             {renderProblemsList()}
           </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, problem: null })}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Problem"
+        message={`Are you sure you want to delete "${deleteModal.problem?.title}"? This action cannot be undone.`}
+        confirmText="Delete Problem"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   );
 };

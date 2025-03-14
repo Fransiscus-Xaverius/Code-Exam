@@ -1,7 +1,10 @@
 const Competition = require('../models/Competition');
 const CompetitionParticipant = require('../models/CompetitionParticipant');
 const User = require('../models/User');
+const Problem = require('../models/Problem');
+const CompetitionProblem = require('../models/CompetitionProblem');
 const { Op } = require('sequelize');
+const sequelize = require('../config/database');
 
 
 
@@ -434,6 +437,271 @@ exports.checkRegistration = async (req, res, next) => {
       registrationData: registration
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get problems for a competition
+// @route   GET /api/competitions/:id/problems
+// @access  Public
+exports.getCompetitionProblems = async (req, res, next) => {
+  try {
+    const competitionId = req.params.id;
+    
+    // Check if competition exists
+    const competition = await Competition.findByPk(competitionId);
+    if (!competition) {
+      return res.status(404).json({
+        success: false,
+        message: 'Competition not found'
+      });
+    }
+    
+    // Get problems for the competition with their details
+    const problems = await CompetitionProblem.findAll({
+      where: { competition_id: competitionId },
+      include: [
+        {
+          model: Problem,
+          attributes: ['id', 'title', 'description', 'difficulty', 'points', 'time_limit_ms', 'memory_limit_kb']
+        }
+      ],
+      order: [['order_index', 'ASC']]
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: problems
+    });
+  } catch (error) {
+    console.error('Get competition problems error:', error);
+    next(error);
+  }
+};
+
+// @desc    Add a problem to a competition
+// @route   POST /api/competitions/:id/problems
+// @access  Private (Admin only)
+exports.addProblemToCompetition = async (req, res, next) => {
+  try {
+    const competitionId = req.params.id;
+    const { problem_id, order_index } = req.body;
+    
+    // Validate required fields
+    if (!problem_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide problem_id'
+      });
+    }
+    
+    // Check if competition exists
+    const competition = await Competition.findByPk(competitionId);
+    if (!competition) {
+      return res.status(404).json({
+        success: false,
+        message: 'Competition not found'
+      });
+    }
+    
+    // Check if problem exists
+    const problem = await Problem.findByPk(problem_id);
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found'
+      });
+    }
+    
+    // Check if problem is already in the competition
+    const existingProblem = await CompetitionProblem.findOne({
+      where: {
+        competition_id: competitionId,
+        problem_id: problem_id
+      }
+    });
+    
+    if (existingProblem) {
+      return res.status(400).json({
+        success: false,
+        message: 'Problem is already in the competition'
+      });
+    }
+    
+    // Get the highest order_index if not provided
+    let orderIndex = order_index;
+    if (orderIndex === undefined) {
+      const maxOrderIndex = await CompetitionProblem.max('order_index', {
+        where: { competition_id: competitionId }
+      });
+      orderIndex = (maxOrderIndex !== null ? maxOrderIndex : -1) + 1;
+    }
+    
+    // Add problem to competition
+    const competitionProblem = await CompetitionProblem.create({
+      competition_id: competitionId,
+      problem_id: problem_id,
+      order_index: orderIndex
+    });
+    
+    res.status(201).json({
+      success: true,
+      data: competitionProblem
+    });
+  } catch (error) {
+    console.error('Add problem to competition error:', error);
+    
+    // Handle validation errors
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      const messages = error.errors.map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', ')
+      });
+    }
+    
+    next(error);
+  }
+};
+
+// @desc    Remove a problem from a competition
+// @route   DELETE /api/competitions/:id/problems/:problemId
+// @access  Private (Admin only)
+exports.removeProblemFromCompetition = async (req, res, next) => {
+  try {
+    const competitionId = req.params.id;
+    const problemId = req.params.problemId;
+    
+    // Check if competition exists
+    const competition = await Competition.findByPk(competitionId);
+    if (!competition) {
+      return res.status(404).json({
+        success: false,
+        message: 'Competition not found'
+      });
+    }
+    
+    // Check if problem is in the competition
+    const competitionProblem = await CompetitionProblem.findOne({
+      where: {
+        competition_id: competitionId,
+        problem_id: problemId
+      }
+    });
+    
+    if (!competitionProblem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found in the competition'
+      });
+    }
+    
+    // Get the current order index before deleting
+    const currentOrderIndex = competitionProblem.order_index;
+    
+    // Remove problem from competition
+    await competitionProblem.destroy();
+    
+    // Update order indices for remaining problems
+    await CompetitionProblem.update(
+      { order_index: sequelize.literal('order_index - 1') },
+      {
+        where: {
+          competition_id: competitionId,
+          order_index: { [Op.gt]: currentOrderIndex }
+        }
+      }
+    );
+    
+    res.status(200).json({
+      success: true,
+      message: 'Problem removed from competition'
+    });
+  } catch (error) {
+    console.error('Remove problem from competition error:', error);
+    next(error);
+  }
+};
+
+// @desc    Update problem order in a competition
+// @route   PUT /api/competitions/:id/problems/:problemId
+// @access  Private (Admin only)
+exports.updateProblemOrder = async (req, res, next) => {
+  try {
+    const competitionId = req.params.id;
+    const problemId = req.params.problemId;
+    const { order_index } = req.body;
+    
+    // Validate required fields
+    if (order_index === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide order_index'
+      });
+    }
+    
+    // Check if competition exists
+    const competition = await Competition.findByPk(competitionId);
+    if (!competition) {
+      return res.status(404).json({
+        success: false,
+        message: 'Competition not found'
+      });
+    }
+    
+    // Check if problem is in the competition
+    const competitionProblem = await CompetitionProblem.findOne({
+      where: {
+        competition_id: competitionId,
+        problem_id: problemId
+      }
+    });
+    
+    if (!competitionProblem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found in the competition'
+      });
+    }
+    
+    // Get the current order index
+    const currentOrderIndex = competitionProblem.order_index;
+    
+    // Update problem order
+    if (currentOrderIndex < order_index) {
+      // Moving down - decrease order_index for problems between current and new position
+      await CompetitionProblem.update(
+        { order_index: sequelize.literal('order_index - 1') },
+        {
+          where: {
+            competition_id: competitionId,
+            order_index: { [Op.gt]: currentOrderIndex, [Op.lte]: order_index }
+          }
+        }
+      );
+    } else if (currentOrderIndex > order_index) {
+      // Moving up - increase order_index for problems between new and current position
+      await CompetitionProblem.update(
+        { order_index: sequelize.literal('order_index + 1') },
+        {
+          where: {
+            competition_id: competitionId,
+            order_index: { [Op.gte]: order_index, [Op.lt]: currentOrderIndex }
+          }
+        }
+      );
+    }
+    
+    // Update the problem's order_index
+    competitionProblem.order_index = order_index;
+    await competitionProblem.save();
+    
+    res.status(200).json({
+      success: true,
+      data: competitionProblem
+    });
+  } catch (error) {
+    console.error('Update problem order error:', error);
     next(error);
   }
 };

@@ -2,25 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
-import { Plus } from 'lucide-react';
-import { CompetitionCard } from '../../components/CompetitionCard';
-import { CompetitionFilter } from '../../components/CompetitionFilter';
+import { Calendar, Users, Award, Clock, Plus, Edit, Trash2 } from 'lucide-react';
+import { Button } from '../../components/Button';
+import { Card } from '../../components/Card';
+import { Alert } from '../../components/Alert';
 import { SearchBar } from '../../components/SearchBar';
 import { Pagination } from '../../components/Pagination';
-import { Button } from '../../components/Button';
+import { CompetitionFilter } from '../../components/CompetitionFilter';
+import { ConfirmationModal } from '../../components/Modal';
 import Sidebar from '../../components/Sidebar';
 
 const CompetitionListPage = () => {
-  const navigate = useNavigate();
-  const { userRole } = useSelector(state => state.auth);
-  
   const [competitions, setCompetitions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filter, setFilter] = useState('all');
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, competition: null });
+  
+  const navigate = useNavigate();
+  
+  // Get user data from Redux store
+  const { userRole, token } = useSelector(state => state.auth);
+  const isAdmin = userRole === 'admin';
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -28,38 +34,103 @@ const CompetitionListPage = () => {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [currentPage, searchTerm, filter]);
+  }, [token, currentPage, searchTerm, filter]);
 
   const fetchCompetitions = async () => {
     try {
-      setLoading(true);
-      setError(null);
+      setIsLoading(true);
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
       const params = new URLSearchParams({
         page: currentPage.toString(),
         search: searchTerm,
         filter
       });
       
-      const response = await axios.get(`/api/competitions?${params}`);
-      setCompetitions(response.data.data);
-      setTotalPages(response.data.totalPages);
+      const response = await axios.get(`/api/competitions?${params}`, { headers });
+      setCompetitions(response.data.data || []);
+      setTotalPages(response.data.totalPages || 1);
+      setError(null);
     } catch (err) {
-      setError('Failed to load competitions. Please try again later.');
       console.error('Error fetching competitions:', err);
+      setError('Failed to load competitions. Please try again later.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const getCompetitionStatus = (start, end) => {
-    const now = new Date();
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    return now < startDate ? 'upcoming' : now > endDate ? 'past' : 'ongoing';
+  const handleDeleteClick = (competition) => {
+    setDeleteModal({ isOpen: true, competition });
+  };
+  
+  const handleDeleteConfirm = async () => {
+    try {
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
+      await axios.delete(`/api/competitions/${deleteModal.competition.id}`, { headers });
+      
+      // Update the competitions list
+      setCompetitions(competitions.filter(comp => comp.id !== deleteModal.competition.id));
+      setDeleteModal({ isOpen: false, competition: null });
+    } catch (err) {
+      console.error('Error deleting competition:', err);
+      setError('Failed to delete competition. Please try again.');
+    }
   };
 
-  const renderContent = () => {
-    if (loading) {
+  const formatDate = (dateString) => {
+    const options = { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const getCompetitionStatus = (startTime, endTime) => {
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    
+    if (now < start) {
+      return 'upcoming';
+    } else if (now > end) {
+      return 'past';
+    } else {
+      return 'ongoing';
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    let color, text;
+    
+    switch (status) {
+      case 'upcoming':
+        color = 'bg-blue-100 text-blue-800';
+        text = 'Upcoming';
+        break;
+      case 'ongoing':
+        color = 'bg-green-100 text-green-800';
+        text = 'Active';
+        break;
+      case 'past':
+        color = 'bg-gray-100 text-gray-800';
+        text = 'Ended';
+        break;
+      default:
+        color = 'bg-gray-100 text-gray-800';
+        text = 'Unknown';
+    }
+    
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>
+        {text}
+      </span>
+    );
+  };
+
+  const renderCompetitions = () => {
+    if (isLoading) {
       return (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
@@ -72,64 +143,130 @@ const CompetitionListPage = () => {
 
     if (error) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-center py-8 bg-red-50 rounded-lg border border-red-100">
-          <div className="rounded-full bg-red-100 p-3 mb-4">
-            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <p className="text-red-600 font-medium mb-2">{error}</p>
+        <Alert type="error" message={error} className="mb-4">
           <button
             onClick={fetchCompetitions}
-            className="mt-4 text-blue-600 hover:text-blue-700 font-medium focus:outline-none focus:underline"
+            className="mt-3 text-blue-600 hover:text-blue-700 font-medium focus:outline-none focus:underline"
           >
             Try again
           </button>
-        </div>
+        </Alert>
       );
     }
 
     if (competitions.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
-          <div className="rounded-full bg-gray-100 p-3 mb-4">
-            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
+        <Card>
+          <div className="p-8 text-center">
+            <Award size={48} className="mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Competitions Found</h3>
+            <p className="text-gray-500 mb-6">
+              {searchTerm || filter !== 'all' 
+                ? "Try adjusting your search terms or filters to find what you're looking for."
+                : "There are no competitions available at the moment."}
+            </p>
+            
+            {isAdmin && (
+              <Button onClick={() => navigate('/competition/new')}>
+                Create Your First Competition
+              </Button>
+            )}
           </div>
-          <h3 className="text-xl font-medium text-gray-700 mb-2">No competitions found</h3>
-          <p className="text-gray-500 max-w-sm">Try adjusting your search terms or filters to find what you're looking for.</p>
-        </div>
+        </Card>
       );
     }
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {competitions.map((competition) => (
-          <CompetitionCard
-            key={competition.id}
-            competition={competition}
-            status={getCompetitionStatus(competition.start_time, competition.end_time)}
-            onViewDetails={() => navigate(`/competitions/${competition.id}`)}
-          />
-        ))}
+        {competitions.map(competition => {
+          const status = getCompetitionStatus(competition.start_time, competition.end_time);
+          return (
+            <Card key={competition.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-2 flex-1 truncate" title={competition.name}>
+                    {competition.name}
+                  </h2>
+                  {getStatusBadge(status)}
+                </div>
+                
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center text-gray-600">
+                    <Calendar size={16} className="mr-2" />
+                    <div>
+                      <div>Start: {formatDate(competition.start_time)}</div>
+                      <div>End: {formatDate(competition.end_time)}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center text-gray-600">
+                    <Clock size={16} className="mr-2" />
+                    <span>Duration: {Math.round((new Date(competition.end_time) - new Date(competition.start_time)) / (1000 * 60 * 60))} hours</span>
+                  </div>
+                  
+                  <div className="flex items-center text-gray-600">
+                    <Users size={16} className="mr-2" />
+                    <span>{competition.participant_count || 0} participants</span>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                  <Button 
+                    variant="primary"
+                    onClick={() => navigate(`/competitions/${competition.id}`)}
+                    className="flex-1 mr-2"
+                  >
+                    View Details
+                  </Button>
+                  
+                  {isAdmin && (
+                    <div className="flex">
+                      <button
+                        onClick={() => navigate(`/competition/edit/${competition.id}`)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-full"
+                        title="Edit Competition"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDeleteClick(competition)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-full"
+                        title="Delete Competition"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
       </div>
     );
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    fetchCompetitions();
   };
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
+      
       <div className="flex-1 p-6 ml-64">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h1 className="text-2xl font-bold text-gray-900">Competitions</h1>
-            {userRole === 'admin' && (
-              <Button
+            
+            {isAdmin && (
+              <Button 
                 onClick={() => navigate('/competition/new')}
-                className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="flex items-center justify-center"
               >
-                <Plus className="h-5 w-5 mr-2" />
+                <Plus size={16} className="mr-2" />
                 Create Competition
               </Button>
             )}
@@ -150,10 +287,10 @@ const CompetitionListPage = () => {
               />
             </div>
           </div>
-
-          {renderContent()}
-
-          {!loading && !error && totalPages > 1 && (
+          
+          {renderCompetitions()}
+          
+          {!isLoading && !error && competitions.length > 0 && totalPages > 1 && (
             <div className="mt-8">
               <Pagination
                 currentPage={currentPage}
@@ -164,6 +301,17 @@ const CompetitionListPage = () => {
           )}
         </div>
       </div>
+      
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, competition: null })}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Competition"
+        message={`Are you sure you want to delete "${deleteModal.competition?.name}"? This action cannot be undone.`}
+        confirmText="Delete Competition"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   );
 };

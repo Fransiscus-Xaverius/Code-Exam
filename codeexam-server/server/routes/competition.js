@@ -9,8 +9,12 @@ const {
   deleteCompetition,
   joinCompetition,
   getCompetitionParticipants,
-  checkRegistration
-} = require('../controllers/competitionController');
+  checkRegistration,
+  getCompetitionProblems,
+  addProblemToCompetition,
+  removeProblemFromCompetition,
+  updateProblemOrder
+} = require('../controllers/competitioncontroller');
 
 // @route   POST /api/competitions
 // @desc    Create a new competition
@@ -51,5 +55,25 @@ router.get('/:id/participants', protect(['admin','judge']), getCompetitionPartic
 // @desc    Check if user is registered for a competition
 // @access  Private
 router.get('/:id/registration', protect(), checkRegistration);
+
+// @route   GET /api/competitions/:id/problems
+// @desc    Get problems for a competition
+// @access  Public
+router.get('/:id/problems', getCompetitionProblems);
+
+// @route   POST /api/competitions/:id/problems
+// @desc    Add a problem to a competition
+// @access  Private (Admin only)
+router.post('/:id/problems', protect(['admin']), addProblemToCompetition);
+
+// @route   DELETE /api/competitions/:id/problems/:problemId
+// @desc    Remove a problem from a competition
+// @access  Private (Admin only)
+router.delete('/:id/problems/:problemId', protect(['admin']), removeProblemFromCompetition);
+
+// @route   PUT /api/competitions/:id/problems/:problemId
+// @desc    Update problem order in a competition
+// @access  Private (Admin only)
+router.put('/:id/problems/:problemId', protect(['admin']), updateProblemOrder);
 
 module.exports = router;

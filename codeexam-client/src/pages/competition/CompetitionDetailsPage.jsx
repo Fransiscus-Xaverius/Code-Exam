@@ -174,7 +174,7 @@ const CompetitionDetailsPage = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => navigate(`/competition/edit/${competition.id}`)}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-gray-200 border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                  className="inline-flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
                 >
                   <Edit3 className="h-4 w-4 mr-2" />
                   Edit Competition
