@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '../components/Button';
-import { InputField } from '../components/InputField';
 import { Card } from '../components/Card';
 import { Logo } from '../components/Logo';
 import { Alert } from '../components/Alert';
 import { loginStart, loginSuccess, loginFailure } from '../redux/slices/authSlice';
+import { InputField } from '../components/inputfield';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -72,12 +72,14 @@ const LoginPage = () => {
             <InputField
               label="Email address"
               type="email"
+              name="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="Enter your email"
               autoComplete="email"
               disabled={loading}
+              error={error && error.includes('email') ? error : false}
               aria-label="Email address"
             />
             

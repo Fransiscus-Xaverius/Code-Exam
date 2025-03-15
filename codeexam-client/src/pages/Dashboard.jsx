@@ -25,130 +25,50 @@ const CodeExamDashboard = () => {
 
   const { userRole, isAuthenticated, user, token } = useSelector(state => state.auth);
 
-  useEffect(() => {
-    fetchProblems();
-  }, [token, searchTerm, difficultyFilter, sortBy, sortOrder]);
+  // Add the handleAddNewProblem function inside the component
+  const handleAddNewProblem = () => {
+    navigate('/problem/new');
+  };
 
   const fetchProblems = async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
-        search: searchTerm,
-        difficulty: difficultyFilter,
-        sortBy,
-        sortOrder
+        page: 1,
+        limit: 10
       });
+
+      // Add filters if they're not default values
+      if (difficultyFilter !== 'all') {
+        params.append('difficulty', difficultyFilter);
+      }
+
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
 
       const response = await axios.get(`/api/problems?${params}`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
 
-      setProblems(response.data.problems || []);
-      setError(null);
+      // Update to match the server response structure
+      if (response.data.success) {
+        setProblems(response.data.problems || []);
+        setError(null);
+      } else {
+        setError(response.data.message || 'Failed to load problems');
+        setProblems([]);
+      }
     } catch (err) {
       console.error('Error fetching problems:', err);
       setError('Failed to load problems. Please try again later.');
+      setProblems([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleToggleRole = () => {
-    dispatch(toggleUserRole());
-  };
-
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate('/login');
-  };
-
-  const handleDeleteClick = (problem) => {
-    setDeleteModal({ isOpen: true, problem });
-  };
-
-  const handleDeleteConfirm = async () => {
-    try {
-      await axios.delete(`/api/problems/${deleteModal.problem.id}`, {
-        headers: { Authorization: token ? `Bearer ${token}` : '' }
-      });
-
-      setProblems(problems.filter(p => p.id !== deleteModal.problem.id));
-      setDeleteModal({ isOpen: false, problem: null });
-    } catch (err) {
-      console.error('Error deleting problem:', err);
-      setError('Failed to delete problem. Please try again.');
-    }
-  };
-
-  const DifficultyBadge = ({ difficulty }) => {
-    const styles = {
-      Easy: 'bg-green-100 text-green-800 border-green-200',
-      Medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      Hard: 'bg-red-100 text-red-800 border-red-200'
-    };
-
-    return (
-      <span className={`${styles[difficulty]} text-xs px-2.5 py-0.5 rounded-full border`}>
-        {difficulty}
-      </span>
-    );
-  };
-
-  const StatusIndicator = ({ solved }) => (
-    <div className="flex items-center">
-      {solved ? (
-        <div className="flex items-center text-green-600">
-          <CheckCircle size={16} className="mr-1" />
-          <span className="text-sm">Solved</span>
-        </div>
-      ) : (
-        <div className="flex items-center text-gray-400">
-          <HelpCircle size={16} className="mr-1" />
-          <span className="text-sm">Unsolved</span>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderFilters = () => (
-    <div className="flex flex-col sm:flex-row gap-4 mb-6">
-      <SearchBar
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        placeholder="Search problems..."
-        className="flex-1"
-      />
-
-      <select
-        value={difficultyFilter}
-        onChange={(e) => setDifficultyFilter(e.target.value)}
-        className="px-3 py-2 border rounded-lg bg-white"
-      >
-        <option value="all">All Difficulties</option>
-        <option value="Easy">Easy</option>
-        <option value="Medium">Medium</option>
-        <option value="Hard">Hard</option>
-      </select>
-
-      <select
-        value={`${sortBy}-${sortOrder}`}
-        onChange={(e) => {
-          const [newSortBy, newSortOrder] = e.target.value.split('-');
-          setSortBy(newSortBy);
-          setSortOrder(newSortOrder);
-        }}
-        className="px-3 py-2 border rounded-lg bg-white"
-      >
-        <option value="title-asc">Title (A-Z)</option>
-        <option value="title-desc">Title (Z-A)</option>
-        <option value="difficulty-asc">Difficulty (Easy-Hard)</option>
-        <option value="difficulty-desc">Difficulty (Hard-Easy)</option>
-        <option value="points-asc">Points (Low-High)</option>
-        <option value="points-desc">Points (High-Low)</option>
-      </select>
-    </div>
-  );
-
+  // Update the problems mapping in renderProblemsList
   const renderProblemsList = () => {
     if (isLoading) {
       return (
@@ -173,7 +93,7 @@ const CodeExamDashboard = () => {
           <div className="text-gray-500 mb-4">No problems found</div>
           {userRole === 'admin' && (
             <Button
-              onClick={() => navigate('/problems/new')}
+              onClick={handleAddNewProblem}
               className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out rounded-lg shadow-sm hover:shadow-md"
             >
               <Plus size={18} className="mr-2 animate-pulse" />
@@ -209,7 +129,7 @@ const CodeExamDashboard = () => {
     );
 
     return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead>{tableHeaders}</thead>
@@ -219,7 +139,9 @@ const CodeExamDashboard = () => {
                   {userRole === 'admin' ? (
                     <>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{problem.title}</div>
+                        <div className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer" onClick={() => navigate(`/problems/${problem.id}`)}>
+                          {problem.title}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <DifficultyBadge difficulty={problem.difficulty} />
@@ -230,23 +152,29 @@ const CodeExamDashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(problem.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => navigate(`/problems/edit/${problem.id}`)}
-                        >
-                          <Edit size={14} className="mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => handleDeleteClick(problem)}
-                        >
-                          <Trash2 size={14} className="mr-1" />
-                          Delete
-                        </Button>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-3">
+                          <button
+                            onClick={() => navigate(`/problem/edit/${problem.id}`)}
+                            className="group relative flex items-center justify-center p-2 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                            title="Edit Problem"
+                          >
+                            <Edit size={16} className="group-hover:scale-110 transition-transform duration-200" />
+                            <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                              Edit Problem
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(problem)}
+                            className="group relative flex items-center justify-center p-2 rounded-full bg-red-50 hover:bg-red-100 text-red-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                            title="Delete Problem"
+                          >
+                            <Trash2 size={16} className="group-hover:scale-110 transition-transform duration-200" />
+                            <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                              Delete Problem
+                            </span>
+                          </button>
+                        </div>
                       </td>
                     </>
                   ) : (
@@ -283,41 +211,150 @@ const CodeExamDashboard = () => {
     );
   };
 
+  // Add useEffect dependency array
+  useEffect(() => {
+    if (token) {
+      fetchProblems();
+    }
+  }, [token, searchTerm, difficultyFilter, sortBy, sortOrder]);
+
+  const handleToggleRole = () => {
+    dispatch(toggleUserRole());
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
+
+  const handleDeleteClick = (problem) => {
+    setDeleteModal({ isOpen: true, problem });
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await axios.delete(`/api/problems/${deleteModal.problem.id}`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+
+      setProblems(problems.filter(p => p.id !== deleteModal.problem.id));
+      setDeleteModal({ isOpen: false, problem: null });
+    } catch (err) {
+      console.error('Error deleting problem:', err);
+      setError('Failed to delete problem. Please try again.');
+    }
+  };
+
+  const DifficultyBadge = ({ difficulty }) => {
+    const styles = {
+      Easy: 'bg-green-100 text-green-800 border-green-200 shadow-sm shadow-green-100',
+      Medium: 'bg-yellow-100 text-yellow-800 border-yellow-200 shadow-sm shadow-yellow-100',
+      Hard: 'bg-red-100 text-red-800 border-red-200 shadow-sm shadow-red-100'
+    };
+
+    return (
+      <span className={`${styles[difficulty]} text-xs px-2.5 py-0.5 rounded-full border inline-flex items-center justify-center font-medium`}>
+        {difficulty}
+      </span>
+    );
+  };
+
+  const StatusIndicator = ({ solved }) => (
+    <div className="flex items-center">
+      {solved ? (
+        <div className="flex items-center text-green-600">
+          <CheckCircle size={16} className="mr-1" />
+          <span className="text-sm">Solved</span>
+        </div>
+      ) : (
+        <div className="flex items-center text-gray-400">
+          <HelpCircle size={16} className="mr-1" />
+          <span className="text-sm">Unsolved</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderFilters = () => (
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-6">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <SearchBar
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search problems..."
+          className="flex-1"
+        />
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          <select
+            value={difficultyFilter}
+            onChange={(e) => setDifficultyFilter(e.target.value)}
+            className="px-3 py-2 border rounded-lg bg-white hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">All Difficulties</option>
+            <option value="Easy">Easy</option>
+            <option value="Medium">Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+
+          <select
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(e) => {
+              const [newSortBy, newSortOrder] = e.target.value.split('-');
+              setSortBy(newSortBy);
+              setSortOrder(newSortOrder);
+            }}
+            className="px-3 py-2 border rounded-lg bg-white hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="title-asc">Title (A-Z)</option>
+            <option value="title-desc">Title (Z-A)</option>
+            <option value="difficulty-asc">Difficulty (Easy-Hard)</option>
+            <option value="difficulty-desc">Difficulty (Hard-Easy)</option>
+            <option value="points-asc">Points (Low-High)</option>
+            <option value="points-desc">Points (High-Low)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 ml-64">
         <div className="p-8">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-8 flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-                <p className="mt-1 text-sm text-gray-500">
-                  Welcome back, {user?.username || 'User'}
-                </p>
-              </div>
+            <div className="mb-8 bg-white p-6 rounded-lg shadow-md border border-gray-100">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Problem Dashboard</h1>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Welcome back, <span className="font-medium text-blue-600">{user?.username || 'User'}</span>
+                  </p>
+                </div>
 
-              <div className="flex items-center space-x-4">
-                {userRole === 'admin' && (
-                  <Button
-                    variant="primary"
-                    onClick={() => navigate('/problems/new')}
-                    className="group relative inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <Plus 
-                      size={18} 
-                      className="mr-2 transition-transform group-hover:rotate-90 duration-300" 
-                    />
-                    <span className="relative inline-block">
-                      Add New Problem
-                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                <div className="flex items-center space-x-4">
+                  {userRole === 'admin' && (
+                    <Button
+                      variant="primary"
+                      onClick={handleAddNewProblem}
+                      className="group relative inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <Plus 
+                        size={18} 
+                        className="mr-2 transition-transform group-hover:rotate-90 duration-300" 
+                      />
+                      <span className="relative inline-block">
+                        Add New Problem
+                        <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                        </span>
                       </span>
-                    </span>
-                    <span className="absolute -z-10 inset-0 rounded-lg bg-gradient-to-br from-blue-600/50 to-blue-700/50 blur opacity-0 group-hover:opacity-75 transition-opacity duration-200"></span>
-                  </Button>
-                )}
+                      <span className="absolute -z-10 inset-0 rounded-lg bg-gradient-to-br from-blue-600/50 to-blue-700/50 blur opacity-0 group-hover:opacity-75 transition-opacity duration-200"></span>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -332,7 +369,17 @@ const CodeExamDashboard = () => {
         onClose={() => setDeleteModal({ isOpen: false, problem: null })}
         onConfirm={handleDeleteConfirm}
         title="Delete Problem"
-        message={`Are you sure you want to delete "${deleteModal.problem?.title}"? This action cannot be undone.`}
+        message={
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Problem</h3>
+            <p className="text-sm text-gray-500">
+              Are you sure you want to delete <span className="font-semibold text-gray-800">"{deleteModal.problem?.title}"</span>? This action cannot be undone.
+            </p>
+          </div>
+        }
         confirmText="Delete Problem"
         cancelText="Cancel"
         type="danger"

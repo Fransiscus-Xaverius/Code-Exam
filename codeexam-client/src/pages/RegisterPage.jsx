@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { InputField } from '../components/InputField';
 import { Card } from '../components/Card';
 import { Logo } from '../components/Logo';
 import { Alert } from '../components/Alert';
 import { useAuth } from '../hooks/useAuth';
+import { InputField } from '../components/inputfield';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -121,6 +121,7 @@ const RegisterPage = () => {
                 required
                 placeholder="John"
                 disabled={loading}
+                error={error && error.includes('first name') ? error : false}
                 aria-label="First name"
               />
 

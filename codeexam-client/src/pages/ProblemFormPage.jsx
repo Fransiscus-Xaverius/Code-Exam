@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Save, HelpCircle } from 'lucide-react';
+import { Save, HelpCircle, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from '../components/Sidebar'; // Import the Sidebar component
+import { useSelector } from 'react-redux'; // Import useSelector
 
 const ProblemFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams(); // Get problem ID from URL if editing
   const isEditMode = !!id;
   
+  // Get auth state from Redux store
+  const { userRole, token, user } = useSelector(state => state.auth);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [userRole, setUserRole] = useState('admin'); // Default to admin for this page
   
   // Form state
   const [formData, setFormData] = useState({
@@ -43,12 +46,17 @@ const ProblemFormPage = () => {
   
   // Fetch problem data if in edit mode
   useEffect(() => {
+    // Redirect if not admin
+    if (userRole !== 'admin' && userRole !== 'judge') {
+      navigate('/dashboard');
+      return;
+    }
+    
     const fetchProblemData = async () => {
       if (!isEditMode) return;
       
       try {
         setIsLoading(true);
-        const token = localStorage.getItem('codeexam_token');
         
         const response = await axios.get(`/api/problems/${id}`, {
           headers: {
@@ -57,8 +65,12 @@ const ProblemFormPage = () => {
         });
         
         // Populate form with existing data
-        setFormData(response.data.problem);
-        setError(null);
+        if (response.data.success) {
+          setFormData(response.data.problem);
+          setError(null);
+        } else {
+          setError(response.data.message || 'Failed to load problem data');
+        }
       } catch (err) {
         console.error('Error fetching problem:', err);
         setError('Failed to load problem data. Please try again.');
@@ -68,7 +80,7 @@ const ProblemFormPage = () => {
     };
     
     fetchProblemData();
-  }, [id, isEditMode]);
+  }, [id, isEditMode, token, userRole, navigate]);
   
   // Handle form input changes
   const handleChange = (e) => {
@@ -119,9 +131,6 @@ const ProblemFormPage = () => {
     try {
       setIsSubmitting(true);
       
-      // Get token from localStorage
-      const token = localStorage.getItem('codeexam_token');
-      
       // Prepare numerical fields
       const submitData = {
         ...formData,
@@ -130,21 +139,16 @@ const ProblemFormPage = () => {
         memory_limit_kb: Number(formData.memory_limit_kb)
       };
       
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: token ? `Bearer ${token}` : ''
+      };
+      
       // Make API request based on mode (add or edit)
       if (isEditMode) {
-        await axios.put(`/api/problems/${id}`, submitData, {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: token ? `Bearer ${token}` : ''
-          }
-        });
+        await axios.put(`/api/problems/${id}`, submitData, { headers });
       } else {
-        await axios.post('/api/problems', submitData, {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: token ? `Bearer ${token}` : ''
-          }
-        });
+        await axios.post('/api/problems', submitData, { headers });
       }
       
       setSuccess(true);
@@ -196,14 +200,22 @@ const ProblemFormPage = () => {
       
       <div className="ml-64 flex-1 p-6">
         <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">
-            {isEditMode ? 'Edit Problem' : 'Add New Problem'}
-          </h1>
+          <div className="flex items-center">
+            <button 
+              onClick={() => navigate('/dashboard')}
+              className="mr-4 p-2 rounded-full hover:bg-gray-200"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="text-2xl font-bold text-gray-800">
+              {isEditMode ? 'Edit Problem' : 'Add New Problem'}
+            </h1>
+          </div>
           
           <button 
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="bg-green-500 text-white px-4 py-2 rounded flex items-center hover:bg-green-600 disabled:opacity-50"
+            className="bg-green-500 text-white px-4 py-2 rounded flex items-center hover:bg-green-600 disabled:opacity-50 transition-colors duration-200"
           >
             {isSubmitting ? 'Saving...' : (
               <>

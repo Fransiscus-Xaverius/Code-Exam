@@ -4,15 +4,18 @@ import { Provider } from 'react-redux';
 import store from './redux/store';
 import { useSelector } from 'react-redux';
 
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+// import LoginPage from './pages/LoginPage';
+// import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import SolvePage from './pages/SolvePage';
 import ProblemFormPage from './pages/ProblemFormPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CompetitionListPage from './pages/competition/CompetitionListPage';
 import CompetitionDetailsPage from './pages/competition/CompetitionDetailsPage';
-import CompetitionFormPage from './pages/competition/CompetitionFormPage';
+import LoginPage from './pages/loginpage';
+import RegisterPage from './pages/registerpage';
+import CompetitionFormPage from './pages/competition/competitionformpage';
+// import CompetitionFormPage from './pages/competition/CompetitionFormPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useSelector(state => state.auth);
