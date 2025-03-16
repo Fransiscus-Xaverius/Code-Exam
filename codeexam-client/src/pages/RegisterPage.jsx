@@ -5,7 +5,7 @@ import { Card } from '../components/Card';
 import { Logo } from '../components/Logo';
 import { Alert } from '../components/Alert';
 import { useAuth } from '../hooks/useAuth';
-import { InputField } from '../components/inputfield';
+import { InputField } from '../components/InputField';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -35,43 +35,43 @@ const RegisterPage = () => {
       setError('Username is required');
       return false;
     }
-    
+
     if (!formData.first_name.trim() || !formData.last_name.trim()) {
       setError('Full name is required');
       return false;
     }
-    
+
     if (!formData.email.trim()) {
       setError('Email is required');
       return false;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('Please enter a valid email address');
       return false;
     }
-    
+
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
       return false;
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return false;
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
     setError('');
 
@@ -102,8 +102,8 @@ const RegisterPage = () => {
         </div>
 
         {error && (
-          <Alert 
-            type="error" 
+          <Alert
+            type="error"
             message={error}
             className="animate-fade-in"
           />
@@ -162,7 +162,7 @@ const RegisterPage = () => {
               disabled={loading}
               aria-label="Email address"
             />
-            
+
             <InputField
               label="Password"
               type="password"
@@ -175,7 +175,7 @@ const RegisterPage = () => {
               disabled={loading}
               aria-label="Password"
             />
-            
+
             <InputField
               label="Confirm Password"
               type="password"
@@ -210,8 +210,8 @@ const RegisterPage = () => {
           <div className="text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <a 
-                href="/login" 
+              <a
+                href="/login"
                 className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
               >
                 Sign in

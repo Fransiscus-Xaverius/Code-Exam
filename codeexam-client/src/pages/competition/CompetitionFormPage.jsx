@@ -11,8 +11,7 @@ import DateTimePicker from 'react-datetime-picker';
 import 'react-datetime-picker/dist/DateTimePicker.css';
 import 'react-calendar/dist/Calendar.css';
 import 'react-clock/dist/Clock.css';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { InputField } from '../../components/inputfield';
+import { InputField } from '../../components/InputField';
 import { ProblemManager } from '../../components/competition/ProblemManager';
 
 const CompetitionFormPage = () => {

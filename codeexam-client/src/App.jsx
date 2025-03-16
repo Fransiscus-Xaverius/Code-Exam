@@ -12,9 +12,9 @@ import ProblemFormPage from './pages/ProblemFormPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CompetitionListPage from './pages/competition/CompetitionListPage';
 import CompetitionDetailsPage from './pages/competition/CompetitionDetailsPage';
-import LoginPage from './pages/loginpage';
-import RegisterPage from './pages/registerpage';
-import CompetitionFormPage from './pages/competition/competitionformpage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import CompetitionFormPage from './pages/competition/CompetitionFormPage';
 // import CompetitionFormPage from './pages/competition/CompetitionFormPage';
 
 const ProtectedRoute = ({ children }) => {

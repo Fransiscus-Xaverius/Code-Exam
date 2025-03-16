@@ -6,7 +6,7 @@ import { Card } from '../components/Card';
 import { Logo } from '../components/Logo';
 import { Alert } from '../components/Alert';
 import { loginStart, loginSuccess, loginFailure } from '../redux/slices/authSlice';
-import { InputField } from '../components/inputfield';
+import { InputField } from '../components/InputField';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
