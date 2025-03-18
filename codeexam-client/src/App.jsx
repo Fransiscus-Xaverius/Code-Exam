@@ -4,8 +4,6 @@ import { Provider } from 'react-redux';
 import store from './redux/store';
 import { useSelector } from 'react-redux';
 
-// import LoginPage from './pages/LoginPage';
-// import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import SolvePage from './pages/SolvePage';
 import ProblemFormPage from './pages/ProblemFormPage';
@@ -15,101 +13,125 @@ import CompetitionDetailsPage from './pages/competition/CompetitionDetailsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CompetitionFormPage from './pages/competition/CompetitionFormPage';
-// import CompetitionFormPage from './pages/competition/CompetitionFormPage';
+
+// Responsive wrapper component
+const ResponsiveWrapper = ({ children }) => {
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900 antialiased">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        {children}
+      </div>
+    </div>
+  );
+};
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useSelector(state => state.auth);
-  
-  if (loading) return <div>Loading...</div>;
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+  );
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useSelector(state => state.auth);
-  
-  if (loading) return <div>Loading...</div>;
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+  );
   return isAuthenticated ? <Navigate to="/dashboard" /> : children;
 };
 
 const AdminRoute = ({ children }) => {
   const { isAuthenticated, userRole, loading } = useSelector(state => state.auth);
-  
-  if (loading) return <div>Loading...</div>;
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+  );
   return isAuthenticated && userRole === 'admin' ? children : <Navigate to="/login" />;
 };
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/login" element={
-        <PublicRoute>
-          <LoginPage />
-        </PublicRoute>
-      } />
-      
-      <Route path="/register" element={
-        <PublicRoute>
-          <RegisterPage />
-        </PublicRoute>
-      } />
+    // <ResponsiveWrapper>
+      <Routes>
+        <Route path="/login" element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        } />
 
-      <Route path="/404" element={
-        <PublicRoute>
-          <NotFoundPage />
-        </PublicRoute>
-      } />
-      
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      
-      <Route path='/solve/:id' element={
-        <ProtectedRoute>
-          <SolvePage />
-        </ProtectedRoute>
-      } />
-      
-      <Route path='/problem/new' element={
-        <AdminRoute>
-          <ProblemFormPage />
-        </AdminRoute>
-      }/>
-      
-      <Route path='/problem/edit/:id' element={
-        <AdminRoute>
-          <ProblemFormPage />
-        </AdminRoute>
-      }/>
-      
-      <Route path="/competitions" element={
-        <ProtectedRoute>
-          <CompetitionListPage />
-        </ProtectedRoute>
-      } />
+        <Route path="/register" element={
+          <PublicRoute>
+            <RegisterPage />
+          </PublicRoute>
+        } />
 
-      <Route path="/competitions/:id" element={
-        <ProtectedRoute>
-          <CompetitionDetailsPage />
-        </ProtectedRoute>
-      } />
+        <Route path="/404" element={
+          <PublicRoute>
+            <NotFoundPage />
+          </PublicRoute>
+        } />
 
-      <Route path="/competition/new" element={
-        <AdminRoute>
-          <CompetitionFormPage />
-        </AdminRoute>
-      } />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
 
-      <Route path="/competition/edit/:id" element={
-        <AdminRoute>
-          <CompetitionFormPage />
-        </AdminRoute>
-      } />
+        <Route path='/solve/:id' element={
+          <ProtectedRoute>
+            <SolvePage />
+          </ProtectedRoute>
+        } />
 
-      <Route path="/" element={<Navigate to="/dashboard" />} />
-      <Route path="*" element={<Navigate to="/404" />} />
-    </Routes>
+        <Route path='/problem/new' element={
+          <AdminRoute>
+            <ProblemFormPage />
+          </AdminRoute>
+        }/>
+
+        <Route path='/problem/edit/:id' element={
+          <AdminRoute>
+            <ProblemFormPage />
+          </AdminRoute>
+        }/>
+
+        <Route path="/competitions" element={
+          <ProtectedRoute>
+            <CompetitionListPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/competitions/:id" element={
+          <ProtectedRoute>
+            <CompetitionDetailsPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/competition/new" element={
+          <AdminRoute>
+            <CompetitionFormPage />
+          </AdminRoute>
+        } />
+
+        <Route path="/competition/edit/:id" element={
+          <AdminRoute>
+            <CompetitionFormPage />
+          </AdminRoute>
+        } />
+
+        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="*" element={<Navigate to="/404" />} />
+      </Routes>
+    // </ResponsiveWrapper>
   );
 };
 
