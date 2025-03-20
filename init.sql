@@ -103,3 +103,4 @@ CREATE INDEX idx_submissions_problem_id ON submissions(problem_id);
 CREATE INDEX idx_submissions_competition_id ON submissions(competition_id);
 CREATE INDEX idx_leaderboard_competition_id ON leaderboard(competition_id);
 CREATE INDEX idx_leaderboard_rank ON leaderboard(user_rank);
+

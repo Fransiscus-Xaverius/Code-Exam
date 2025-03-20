@@ -1,9 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+
+//Routes
 const authRoutes = require('./routes/auth');
 const problemRoutes = require('./routes/problem');
 const competitionRoutes = require('./routes/competition');
+const discussionRoutes = require('./routes/discussion');
+const submissionRoutes = require('./routes/submission');
+
 const { errorHandler } = require('./middleware/errorHandler');
 const db = require('./config/database');
 
@@ -20,6 +25,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/competitions', competitionRoutes);
+app.use('/api/discussions', discussionRoutes);
+app.use('/api/submissions', submissionRoutes);
 
 // Error Handler
 app.use(errorHandler);

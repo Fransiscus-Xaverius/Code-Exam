@@ -13,6 +13,7 @@ import CompetitionDetailsPage from './pages/competition/CompetitionDetailsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CompetitionFormPage from './pages/competition/CompetitionFormPage';
+import SubmissionsForumPage from './pages/SubmissionForumPage';
 
 // Responsive wrapper component
 const ResponsiveWrapper = ({ children }) => {
@@ -126,6 +127,12 @@ const AppRoutes = () => {
           <AdminRoute>
             <CompetitionFormPage />
           </AdminRoute>
+        } />
+
+        <Route path="/submissions" element={
+          <ProtectedRoute>
+            <SubmissionsForumPage />
+          </ProtectedRoute>
         } />
 
         <Route path="/" element={<Navigate to="/dashboard" />} />

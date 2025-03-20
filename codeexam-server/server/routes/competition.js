@@ -14,7 +14,7 @@ const {
   addProblemToCompetition,
   removeProblemFromCompetition,
   updateProblemOrder
-} = require('../controllers/competitioncontroller');
+} = require('../controllers/competitionController');
 
 // @route   POST /api/competitions
 // @desc    Create a new competition
