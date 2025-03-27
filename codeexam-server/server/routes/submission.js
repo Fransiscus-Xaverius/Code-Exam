@@ -21,7 +21,7 @@ router.get('/stats', protect(), getSubmissionStats);
 // @route POST /api/submissions
 // @desc Create a new submission
 // @access Protected
-router.post('/', protect(), createSubmission);
+router.post('/run-code', protect(), createSubmission);
 
 // @route GET /api/public/submissions
 // @desc Get all submissions

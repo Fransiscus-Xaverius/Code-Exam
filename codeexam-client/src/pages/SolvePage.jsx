@@ -8,7 +8,7 @@ const Dialog = ({ open, onOpenChange, children }) => {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
-      <div 
+      <div
         className="fixed inset-0 bg-black opacity-50"
         onClick={() => onOpenChange(false)}
       ></div>
@@ -74,8 +74,8 @@ const Button = ({ children, onClick, disabled, className, variant = 'primary' })
 };
 
 const Label = ({ children, htmlFor, className }) => (
-  <label 
-    htmlFor={htmlFor} 
+  <label
+    htmlFor={htmlFor}
     className={`block text-sm font-medium text-gray-700 ${className}`}
   >
     {children}
@@ -95,7 +95,7 @@ const SolvePage = () => {
   const [error, setError] = useState(null);
   const [submissionId, setSubmissionId] = useState(null);
   const [submissionStatus, setSubmissionStatus] = useState(null);
-  
+
   const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
   const [submissionTitle, setSubmissionTitle] = useState('');
   const [submissionExplanation, setSubmissionExplanation] = useState('');
@@ -107,13 +107,13 @@ const SolvePage = () => {
       try {
         setIsLoading(true);
         const token = localStorage.getItem('codeexam_token');
-        
+
         const response = await API.get(`/api/problems/${id}`, {
           headers: {
             Authorization: token ? `Bearer ${token}` : ''
           }
         });
-        
+
         setProblem(response.data.problem);
         setError(null);
       } catch (err) {
@@ -123,7 +123,7 @@ const SolvePage = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchProblemDetails();
   }, [id]);
 
@@ -140,7 +140,7 @@ const SolvePage = () => {
         });
 
         setSubmissionStatus(response.data.submission.status);
-        
+
         if (response.data.submission.status === 'pending' || response.data.submission.status === 'processing') {
           setTimeout(() => checkSubmissionStatus(), 10);
         } else {
@@ -148,16 +148,16 @@ const SolvePage = () => {
           const score = response.data.submission.score;
           const runtime = response.data.submission.runtime_ms;
           const memory = response.data.submission.memory_kb;
-          
+
           let resultMessage = `Submission ${status}\n`;
           resultMessage += `Score: ${score}/100\n`;
           resultMessage += `Runtime: ${runtime}ms\n`;
           resultMessage += `Memory: ${memory}KB\n\n`;
-          
+
           if (response.data.submission.error_message) {
             resultMessage += `Error: ${response.data.submission.error_message}\n\n`;
           }
-          
+
           if (response.data.submission.test_results) {
             try {
               const testResults = JSON.parse(response.data.submission.test_results);
@@ -172,7 +172,7 @@ const SolvePage = () => {
               resultMessage += "Test results available in submission details.";
             }
           }
-          
+
           setOutput(resultMessage);
           setIsRunning(false);
         }
@@ -186,72 +186,134 @@ const SolvePage = () => {
     checkSubmissionStatus();
   }, [submissionId]);
 
-  const postPublicSubmission = async () => {  
-    try { 
-      setIsRunning(true); 
-      const token = localStorage.getItem('codeexam_token'); 
-      
-      const updateRes = await API.put(`/api/submissions/${submissionId}/publish`, { 
-        headers: { Authorization: token ? `Bearer ${token}` : '' }  
-      });
-      
-      const publicRes = await API.post(`/api/discussions/${submissionId}`, { 
-        submission_id: submissionId, 
-        problem_id: id, 
-        title: submissionTitle, 
-        content: submissionExplanation  
-      }, { 
-        headers: { Authorization: token ? `Bearer ${token}` : '' }  
+  const postPublicSubmission = async () => {
+    try {
+      setIsRunning(true);
+      const token = localStorage.getItem('codeexam_token');
+
+      const updateRes = await API.put(`/api/submissions/${submissionId}/publish`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
 
-      setIsSubmissionModalOpen(false);  
-    } catch (error) { 
-      console.error('Error processing submission:', error); 
-      setOutput(`Error processing submission: ${error.response?.data?.message || error.message}`);  
-    } finally { 
-      setIsRunning(false);  
-    }  
+      const publicRes = await API.post(`/api/discussions/${submissionId}`, {
+        submission_id: submissionId,
+        problem_id: id,
+        title: submissionTitle,
+        content: submissionExplanation
+      }, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+
+      setIsSubmissionModalOpen(false);
+    } catch (error) {
+      console.error('Error processing submission:', error);
+      setOutput(`Error processing submission: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setIsRunning(false);
+    }
   };
+
+  // Add new state for run-code tracking
+  const [runCodeSubmissionId, setRunCodeSubmissionId] = useState(null);
+  const [runCodeStatus, setRunCodeStatus] = useState(null);
+  const [pollingInterval, setPollingInterval] = useState(2000); // 2 seconds initial polling
 
   const runCode = async () => {
     setIsRunning(true);
     setOutput('Running code...');
-    
+    setRunCodeSubmissionId(null);
+    setRunCodeStatus(null);
+
     try {
       const token = localStorage.getItem('codeexam_token');
-      
-      const response = await API.post('/api/submissions/run', {
+
+      const response = await API.post('/api/submissions/run-code', {
         problem_id: id,
-        source_code: code,
-        language_id: getLanguageId(language)
+        code: code,
+        language: getLanguageId(language)
       }, {
         headers: {
           Authorization: token ? `Bearer ${token}` : ''
         }
       });
+
+      // Set the submission ID to trigger the polling effect
+      setRunCodeSubmissionId(response.data.submission.id);
+      setRunCodeStatus('pending');
+      setOutput('Code submitted for execution. Waiting for results...');
       
-      let resultOutput = 'Code execution complete.\n\n';
-      
-      if (response.data.results && response.data.results.length > 0) {
-        resultOutput += 'Test Results:\n';
-        response.data.results.forEach((result, index) => {
-          resultOutput += `Test #${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}\n`;
-          resultOutput += `  Input: ${result.input}\n`;
-          resultOutput += `  Expected: ${result.expected_output}\n`;
-          resultOutput += `  Actual: ${result.actual_output}\n`;
-          resultOutput += `  Runtime: ${result.runtime_ms}ms\n`;
-          resultOutput += `  Memory: ${result.memory_kb}KB\n\n`;
-        });
-      } else {
-        resultOutput += response.data.message || 'No test results available.';
-      }
-      
-      setOutput(resultOutput);
     } catch (error) {
       console.error('Error running code:', error);
       setOutput(`Error running code: ${error.response?.data?.message || error.message}`);
-    } finally {
       setIsRunning(false);
+    }
+  };
+
+  useEffect(() => {
+    if (runCodeSubmissionId) {
+      checkRunCodeStatus();
+    }
+  }, [runCodeSubmissionId]);
+
+  const checkRunCodeStatus = async () => {
+    try {
+      const token = localStorage.getItem('codeexam_token');
+      const response = await API.get(`/api/submissions/${runCodeSubmissionId}`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : ''
+        }
+      });
+
+      setRunCodeStatus(response.data.submission.status);
+
+      if (response.data.submission.status === 'pending' || response.data.submission.status === 'processing') {
+        // Continue polling if still processing
+        let timeoutId = setTimeout(checkRunCodeStatus, pollingInterval);
+      } else {
+        // Process completed results
+        const status = response.data.submission.status;
+        const runtime = response.data.submission.execution_time_ms || response.data.submission.runtime_ms;
+        const memory = response.data.submission.memory_used_kb || response.data.submission.memory_kb;
+
+        let resultOutput = 'Code execution complete.\n\n';
+
+        if (status !== 'accepted' && response.data.submission.error_message) {
+          resultOutput += `Error: ${response.data.submission.error_message}\n\n`;
+        }
+
+        if (response.data.submission.test_results) {
+          try {
+            const testResults = JSON.parse(response.data.submission.test_results);
+            resultOutput += 'Test Results:\n';
+            testResults.forEach((result, index) => {
+              resultOutput += `Test #${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}\n`;
+              if (result.input) resultOutput += `  Input: ${result.input}\n`;
+              if (result.expected_output) resultOutput += `  Expected: ${result.expected_output}\n`;
+              if (result.stdout) resultOutput += `  Actual: ${result.stdout}\n`;
+              resultOutput += `  Runtime: ${result.runtime_ms}ms\n`;
+              resultOutput += `  Memory: ${result.memory_kb}KB\n`;
+              if (!result.passed && result.error) {
+                resultOutput += `  Error: ${result.error}\n`;
+              }
+              resultOutput += '\n';
+            });
+          } catch (e) {
+            resultOutput += "Test results format error. Please try again.\n";
+            console.error("Error parsing test results:", e);
+          }
+        } else {
+          resultOutput += response.data.message || 'No test results available.';
+        }
+
+        setOutput(resultOutput);
+        setIsRunning(false);
+        setRunCodeSubmissionId(null);
+      }
+    } catch (error) {
+      console.error('Error checking run-code status:', error);
+      setOutput(`Error checking run-code status: ${error.response?.data?.message || error.message}`);
+      setIsRunning(false);
+      setRunCodeSubmissionId(null);
     }
   };
 
@@ -261,9 +323,9 @@ const SolvePage = () => {
       setOutput('Submitting solution...');
       setSubmissionId(null);
       setSubmissionStatus(null);
-      
+
       const token = localStorage.getItem('codeexam_token');
-      
+
       const response = await API.post('/api/submissions', {
         problem_id: id,
         code: code,
@@ -273,9 +335,9 @@ const SolvePage = () => {
           Authorization: token ? `Bearer ${token}` : ''
         }
       });
-      
+
       setOutput(`Submission received and queued for evaluation. Submission ID: ${response.data.submission_id}`);
-      
+
       setSubmissionId(response.data.submission.id);
       setSubmissionStatus('pending');
     } catch (error) {
@@ -327,34 +389,34 @@ const SolvePage = () => {
               Provide a title and explanation for your submitted solution.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="title" className="text-right">
                 Title
               </Label>
-              <Input 
-                id="title" 
+              <Input
+                id="title"
                 value={submissionTitle}
                 onChange={(e) => setSubmissionTitle(e.target.value)}
                 placeholder="Give your solution a descriptive title"
-                className="col-span-3" 
+                className="col-span-3"
               />
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="explanation" className="text-right">
                 Explanation
               </Label>
-              <Textarea 
-                id="explanation" 
+              <Textarea
+                id="explanation"
                 value={submissionExplanation}
                 onChange={(e) => setSubmissionExplanation(e.target.value)}
                 placeholder="Explain your solution approach, key algorithms, or interesting techniques"
                 className="col-span-3 min-h-[100px]"
               />
             </div>
-            
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label className="text-right">Submitted Code</Label>
               <div className="col-span-3 bg-gray-100 p-2 rounded max-h-[200px] overflow-y-auto">
@@ -362,15 +424,15 @@ const SolvePage = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsSubmissionModalOpen(false)}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={postPublicSubmission}
               disabled={!submissionTitle.trim() || isRunning}
             >
@@ -394,7 +456,7 @@ const SolvePage = () => {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-1/3 bg-gray-200 overflow-y-auto p-6 border-r border-gray-300">
           <h2 className="text-2xl font-bold mb-4">Question Details</h2>
-          
+
           {isLoading ? (
             <div className="bg-white p-4 rounded-lg shadow">
               <p>Loading problem details...</p>
@@ -407,40 +469,39 @@ const SolvePage = () => {
             <div className="bg-white p-4 rounded-lg shadow">
               <h3 className="text-xl font-semibold mb-2">{problem.title}</h3>
               <div className="mb-4">
-                <span className={`inline-block px-2 py-1 rounded text-sm mr-2 ${
-                  problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' : 
-                  problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 
-                  'bg-red-100 text-red-800'
-                }`}>{problem.difficulty}</span>
+                <span className={`inline-block px-2 py-1 rounded text-sm mr-2 ${problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
+                    problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                  }`}>{problem.difficulty}</span>
                 <span className="text-gray-500 text-sm">Points: {problem.points}</span>
               </div>
               <p className="mb-4">{problem.description}</p>
-              
+
               <h4 className="font-semibold mb-2">Input Format:</h4>
               <pre className="bg-gray-100 p-3 rounded mb-4 whitespace-pre-wrap">
                 {problem.input_format}
               </pre>
-              
+
               <h4 className="font-semibold mb-2">Output Format:</h4>
               <pre className="bg-gray-100 p-3 rounded mb-4 whitespace-pre-wrap">
                 {problem.output_format}
               </pre>
-              
+
               <h4 className="font-semibold mb-2">Sample Input:</h4>
               <pre className="bg-gray-100 p-3 rounded mb-4 whitespace-pre-wrap">
                 {problem.sample_input}
               </pre>
-              
+
               <h4 className="font-semibold mb-2">Sample Output:</h4>
               <pre className="bg-gray-100 p-3 rounded mb-4 whitespace-pre-wrap">
                 {problem.sample_output}
               </pre>
-              
+
               <h4 className="font-semibold mb-2">Constraints:</h4>
               <pre className="bg-gray-100 p-3 rounded mb-4 whitespace-pre-wrap">
                 {problem.constraints}
               </pre>
-              
+
               <div className="mt-4 text-sm text-gray-500">
                 <p>Time Limit: {problem.time_limit_ms}ms</p>
                 <p>Memory Limit: {problem.memory_limit_kb}KB</p>
@@ -457,7 +518,7 @@ const SolvePage = () => {
         <div className="flex flex-col flex-1">
           <div className="bg-gray-800 text-white p-3 flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <select 
+              <select
                 className="bg-gray-700 text-white px-3 py-1 rounded"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
@@ -467,7 +528,7 @@ const SolvePage = () => {
                 <option value="java">Java</option>
                 <option value="cpp">C++</option>
               </select>
-              <select 
+              <select
                 className="bg-gray-700 text-white px-3 py-1 rounded"
                 value={theme}
                 onChange={(e) => setTheme(e.target.value)}
@@ -475,7 +536,7 @@ const SolvePage = () => {
                 <option value="vs-dark">Dark</option>
                 <option value="light">Light</option>
               </select>
-              <select 
+              <select
                 className="bg-gray-700 text-white px-3 py-1 rounded"
                 value={fontSize}
                 onChange={(e) => setFontSize(parseInt(e.target.value))}
@@ -491,23 +552,28 @@ const SolvePage = () => {
                   Status: {submissionStatus}
                 </span>
               )}
-              <button 
-                className={`px-4 py-1 rounded font-medium ${isRunning ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'}`}
+              {runCodeStatus && (
+                <span className={`px-2 py-1 rounded text-sm ${getStatusBadgeColor(runCodeStatus)}`}>
+                  Run: {runCodeStatus}
+                </span>
+              )}
+              <button
+                className={`px-4 py-1 rounded font-medium ${isRunning && runCodeSubmissionId ? 'bg-gray-600' : 'bg-green-600 hover:bg-green-700'}`}
                 onClick={runCode}
                 disabled={isRunning}
               >
                 {isRunning && submissionStatus !== 'pending' && submissionStatus !== 'processing' ? 'Running...' : 'Run Code'}
               </button>
-              <button 
-                className={`ml-2 px-4 py-1 rounded font-medium ${isRunning ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'}`}
+              <button
+                className={`ml-2 px-4 py-1 rounded font-medium ${isRunning && runCodeSubmissionId ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-700'}`}
                 onClick={submitSolution}
                 disabled={isRunning}
               >
                 {isRunning && (submissionStatus === 'pending' || submissionStatus === 'processing') ? 'Processing...' : 'Submit'}
               </button>
-              
+
               {submissionStatus === 'accepted' && (
-                <button 
+                <button
                   className={`ml-2 px-4 py-1 rounded font-medium ${isRunning ? 'bg-gray-600' : 'bg-purple-600 hover:bg-purple-700'}`}
                   onClick={openSubmissionModal}
                   disabled={isRunning}
@@ -549,3 +615,4 @@ const SolvePage = () => {
 };
 
 export default SolvePage;
+

@@ -1,16 +1,19 @@
 const Submission = require('../models/Submission');
 const Problem = require('../models/Problem');
 const User = require('../models/User');
+const submitToJudge0 = require('../job/judge0');
 
 // @desc    Submit a solution to a problem
 // @route   POST /api/submissions
 // @access  Private
 exports.createSubmission = async (req, res, next) => {
   try {
+    console.log('Request body:', req.body);
     const { problem_id, competition_id, code, language } = req.body;
     
     // Validate required fields
     if (!problem_id || !code || !language) {
+      console.log('Missing required fields');
       return res.status(400).json({
         success: false,
         message: 'Please provide problem_id, code, and language'
@@ -18,8 +21,10 @@ exports.createSubmission = async (req, res, next) => {
     }
     
     // Check if problem exists
+    console.log('Finding problem with ID:', problem_id);
     const problem = await Problem.findByPk(problem_id);
     if (!problem) {
+      console.log('Problem not found with ID:', problem_id);
       return res.status(404).json({
         success: false,
         message: 'Problem not found'
@@ -27,29 +32,46 @@ exports.createSubmission = async (req, res, next) => {
     }
     
     // Create submission
-    // const submission = await Submission.create({
-    //   user_id: req.user.id,
-    //   problem_id,
-    //   competition_id: competition_id || null,
-    //   code,
-    //   language,
-    //   status: 'pending',
-    //   submitted_at: new Date()
-    // });
+    console.log('Creating submission for user:', req.user.id);
+    const submission = await Submission.create({
+      user_id: req.user.id,
+      problem_id,
+      competition_id: competition_id || null,
+      code,
+      language,
+      status: 'pending',
+      submitted_at: new Date()
+    });
+    
+    console.log('Submission created:', submission.id);
     
     // use to debug
-    const submission = await Submission.create({
-        user_id: req.user.id,
-        problem_id,
-        competition_id: competition_id || null,
-        code,
-        language,
-        status: 'accepted',
-        submitted_at: new Date()
-    });  
+    // const submission = await Submission.create({
+    //     user_id: req.user.id,
+    //     problem_id,
+    //     competition_id: competition_id || null,
+    //     code,
+    //     language,
+    //     status: 'accepted',
+    //     submitted_at: new Date()
+    // });  
 
     // TODO: Queue for judging (in a real application, you'd trigger the judge process)
+    console.log('Submitting to Judge0:', submission.id);
+    // Ensure test cases are passed to the judge
+    if (!problem.hidden_test_cases || !Array.isArray(problem.hidden_test_cases) || problem.hidden_test_cases.length === 0) {
+      console.error(`Problem ${problem_id} has no valid hidden test cases. Cannot submit to judge.`);
+      // Update submission status to indicate an error related to problem setup
+      await submission.update({ status: 'runtime_error', judge_comment: 'Problem configuration error: No valid test cases found.' });
+      // Return an internal server error as this is a setup issue, not a user input issue
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error: Problem is missing test cases.'
+      });
+    }
+    submitToJudge0(submission.id, code, language, problem.hidden_test_cases);
     
+    console.log('Submission process completed successfully');
     res.status(201).json({
       success: true,
       submission: {
@@ -64,6 +86,7 @@ exports.createSubmission = async (req, res, next) => {
     // Handle validation errors
     if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
       const messages = error.errors.map(e => e.message);
+      console.log('Validation error:', messages);
       return res.status(400).json({
         success: false,
         message: messages.join(', ')
