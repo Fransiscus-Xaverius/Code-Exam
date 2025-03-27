@@ -10,6 +10,7 @@ const {
   getSubmissionStats,
   getPublicSubmission,
   getPublicSubmissions, 
+  publishSubmission
 } = require('../controllers/submissionController');
 
 // @route GET /api/submissions/stats
@@ -22,15 +23,22 @@ router.get('/stats', protect(), getSubmissionStats);
 // @access Protected
 router.post('/', protect(), createSubmission);
 
-// @route GET /api/submissions
+// @route GET /api/public/submissions
 // @desc Get all submissions
 // @access Protected
-router.get('/', protect(), getPublicSubmissions);
+router.get('/public', protect(), getPublicSubmissions);
+
+router.get('/', protect(), getSubmissions);
 
 // @route GET /api/submissions/:id
 // @desc Get a specific submission
 // @access Protected
-router.get('/:id', protect(), getPublicSubmission);
+router.get('/:id', protect(), getSubmission);
+
+// @route GET /api/public/submissions/:id
+// @desc Get a specific submission
+// @access Protected
+router.get('/public/:id', protect(), getPublicSubmission);
 
 // @route DELETE /api/submissions/:id
 // @desc Delete a submission
@@ -41,5 +49,7 @@ router.delete('/:id', protect(), deleteSubmission);
 // @desc Judge a submission
 // @access Admin & Judge
 router.put('/:id/judge', protect(['admin', 'judge']), judgeSubmission);
+
+router.put('/:id/publish', protect(), publishSubmission);
 
 module.exports = router;

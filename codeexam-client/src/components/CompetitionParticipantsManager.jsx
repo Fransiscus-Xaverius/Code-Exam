@@ -5,6 +5,8 @@ import { Button } from './Button';
 import { Card } from './Card';
 import { Alert } from './Alert';
 
+import API from '../components/helpers/API'
+
 const CompetitionParticipantsManager = ({ competitionId, token }) => {
   const [participants, setParticipants] = useState([]);
   const [availableUsers, setAvailableUsers] = useState([]);
@@ -24,7 +26,7 @@ const CompetitionParticipantsManager = ({ competitionId, token }) => {
       const headers = { Authorization: token ? `Bearer ${token}` : '' };
       
       // Fetch participants already in the competition
-      const participantsRes = await axios.get(
+      const participantsRes = await API.get(
         `/api/competitions/${competitionId}/participants`,
         { headers }
       );
@@ -49,7 +51,7 @@ const CompetitionParticipantsManager = ({ competitionId, token }) => {
       const headers = { Authorization: token ? `Bearer ${token}` : '' };
       
       // Fetch all users
-      const usersRes = await axios.get('/api/users', { headers });
+      const usersRes = await API.get('/api/users', { headers });
       
       // Filter out users already in the competition
       const participantUserIds = new Set(
@@ -72,7 +74,7 @@ const CompetitionParticipantsManager = ({ competitionId, token }) => {
       const headers = { Authorization: token ? `Bearer ${token}` : '' };
       
       // Add participant to competition
-      const response = await axios.post(
+      const response = await API.post(
         `/api/competitions/${competitionId}/participants`,
         { user_id: userId },
         { headers }
@@ -103,7 +105,7 @@ const CompetitionParticipantsManager = ({ competitionId, token }) => {
       const headers = { Authorization: token ? `Bearer ${token}` : '' };
       
       // Remove participant from competition
-      await axios.delete(
+      await API.delete(
         `/api/competitions/${competitionId}/participants/${participantId}`,
         { headers }
       );

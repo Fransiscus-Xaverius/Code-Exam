@@ -7,6 +7,8 @@ import {
   Clock, Tag, X, Menu, Search, Code
 } from 'lucide-react';
 
+import API from '../../components/helpers/API'
+
 // Components
 import Sidebar from '../../components/Sidebar';
 import { Card } from '../../components/Card';
@@ -77,7 +79,7 @@ const CompetitionListPage = () => {
         params.append('search', searchTerm);
       }
 
-      const response = await axios.get(`/api/competitions?${params}`, {
+      const response = await API.get(`/api/competitions?${params}`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
       console.log({ response, responseData: response.data })

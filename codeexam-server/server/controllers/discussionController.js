@@ -1,7 +1,7 @@
 const SubmissionDiscussion = require('../models/SubmissionDiscussion');
 const DiscussionReply = require('../models/DiscussionReply');
 const User = require('../models/User');
-const Submission = require('../models/SubmissionDiscussion');
+const Submission = require('../models/Submission');
 
 // @desc    Create a new discussion for a submission
 // @route   POST /api/submissions/:submissionId/discussions
@@ -10,6 +10,7 @@ exports.createDiscussion = async (req, res, next) => {
   try {
     const { title, content } = req.body;
     const submissionId = req.params.submissionId;
+    console.log(submissionId)
     
     // Validate required fields
     if (!title || !content) {
@@ -81,7 +82,7 @@ exports.createDiscussion = async (req, res, next) => {
 exports.getDiscussions = async (req, res, next) => {
   try {
     const submissionId = req.params.submissionId;
-    
+    console.log(submissionId)
     // Check if submission exists and is published
     const submission = await Submission.findByPk(submissionId);
     

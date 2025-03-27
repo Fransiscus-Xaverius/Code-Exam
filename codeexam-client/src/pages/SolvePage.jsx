@@ -2,6 +2,85 @@ import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import API from '../components/helpers/API';
+
+const Dialog = ({ open, onOpenChange, children }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
+      <div 
+        className="fixed inset-0 bg-black opacity-50"
+        onClick={() => onOpenChange(false)}
+      ></div>
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+        {children}
+      </div>
+    </div>
+  );
+};
+
+const DialogContent = ({ children }) => (
+  <div className="p-6">{children}</div>
+);
+
+const DialogHeader = ({ children }) => (
+  <div className="border-b pb-4 mb-4">{children}</div>
+);
+
+const DialogTitle = ({ children }) => (
+  <h2 className="text-xl font-semibold">{children}</h2>
+);
+
+const DialogDescription = ({ children }) => (
+  <p className="text-gray-500 text-sm">{children}</p>
+);
+
+const Input = ({ value, onChange, placeholder, className, id, type = 'text' }) => (
+  <input
+    type={type}
+    id={id}
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
+  />
+);
+
+const Textarea = ({ value, onChange, placeholder, className, id }) => (
+  <textarea
+    id={id}
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
+  />
+);
+
+const Button = ({ children, onClick, disabled, className, variant = 'primary' }) => {
+  const variantStyles = {
+    primary: 'bg-blue-600 text-white hover:bg-blue-700',
+    outline: 'border border-gray-300 text-gray-700 hover:bg-gray-100'
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-4 py-2 rounded-md transition-colors ${variantStyles[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
+
+const Label = ({ children, htmlFor, className }) => (
+  <label 
+    htmlFor={htmlFor} 
+    className={`block text-sm font-medium text-gray-700 ${className}`}
+  >
+    {children}
+  </label>
+);
 
 const SolvePage = () => {
   const { id } = useParams();
@@ -16,24 +95,25 @@ const SolvePage = () => {
   const [error, setError] = useState(null);
   const [submissionId, setSubmissionId] = useState(null);
   const [submissionStatus, setSubmissionStatus] = useState(null);
+  
+  const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
+  const [submissionTitle, setSubmissionTitle] = useState('');
+  const [submissionExplanation, setSubmissionExplanation] = useState('');
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch problem details using the ID
     const fetchProblemDetails = async () => {
       try {
         setIsLoading(true);
-        // Get token from localStorage
         const token = localStorage.getItem('codeexam_token');
         
-        // Make API request with authorization header
-        const response = await axios.get(`/api/problems/${id}`, {
+        const response = await API.get(`/api/problems/${id}`, {
           headers: {
             Authorization: token ? `Bearer ${token}` : ''
           }
         });
         
-        // Set problem from response
         setProblem(response.data.problem);
         setError(null);
       } catch (err) {
@@ -47,14 +127,13 @@ const SolvePage = () => {
     fetchProblemDetails();
   }, [id]);
 
-  // Check submission status if we have a submission ID
   useEffect(() => {
     if (!submissionId) return;
 
     const checkSubmissionStatus = async () => {
       try {
         const token = localStorage.getItem('codeexam_token');
-        const response = await axios.get(`/api/submissions/${submissionId}`, {
+        const response = await API.get(`/api/submissions/${submissionId}`, {
           headers: {
             Authorization: token ? `Bearer ${token}` : ''
           }
@@ -62,11 +141,9 @@ const SolvePage = () => {
 
         setSubmissionStatus(response.data.submission.status);
         
-        // If the submission is still processing, check again in 2 seconds
         if (response.data.submission.status === 'pending' || response.data.submission.status === 'processing') {
-          setTimeout(() => checkSubmissionStatus(), 2000);
+          setTimeout(() => checkSubmissionStatus(), 10);
         } else {
-          // Update output with the submission results
           const status = response.data.submission.status;
           const score = response.data.submission.score;
           const runtime = response.data.submission.runtime_ms;
@@ -81,7 +158,6 @@ const SolvePage = () => {
             resultMessage += `Error: ${response.data.submission.error_message}\n\n`;
           }
           
-          // If there are test results, display them
           if (response.data.submission.test_results) {
             try {
               const testResults = JSON.parse(response.data.submission.test_results);
@@ -110,16 +186,41 @@ const SolvePage = () => {
     checkSubmissionStatus();
   }, [submissionId]);
 
+  const postPublicSubmission = async () => {  
+    try { 
+      setIsRunning(true); 
+      const token = localStorage.getItem('codeexam_token'); 
+      
+      const updateRes = await API.put(`/api/submissions/${submissionId}/publish`, { 
+        headers: { Authorization: token ? `Bearer ${token}` : '' }  
+      });
+      
+      const publicRes = await API.post(`/api/discussions/${submissionId}`, { 
+        submission_id: submissionId, 
+        problem_id: id, 
+        title: submissionTitle, 
+        content: submissionExplanation  
+      }, { 
+        headers: { Authorization: token ? `Bearer ${token}` : '' }  
+      });
+
+      setIsSubmissionModalOpen(false);  
+    } catch (error) { 
+      console.error('Error processing submission:', error); 
+      setOutput(`Error processing submission: ${error.response?.data?.message || error.message}`);  
+    } finally { 
+      setIsRunning(false);  
+    }  
+  };
+
   const runCode = async () => {
     setIsRunning(true);
     setOutput('Running code...');
     
     try {
-      // Get token from localStorage
       const token = localStorage.getItem('codeexam_token');
       
-      // Make API request to run the code
-      const response = await axios.post('/api/submissions/run', {
+      const response = await API.post('/api/submissions/run', {
         problem_id: id,
         source_code: code,
         language_id: getLanguageId(language)
@@ -129,7 +230,6 @@ const SolvePage = () => {
         }
       });
       
-      // Format the results for display
       let resultOutput = 'Code execution complete.\n\n';
       
       if (response.data.results && response.data.results.length > 0) {
@@ -162,11 +262,9 @@ const SolvePage = () => {
       setSubmissionId(null);
       setSubmissionStatus(null);
       
-      // Get token from localStorage
       const token = localStorage.getItem('codeexam_token');
       
-      // Make API request to submit the solution
-      const response = await axios.post('/api/submissions', {
+      const response = await API.post('/api/submissions', {
         problem_id: id,
         code: code,
         language: language
@@ -178,10 +276,8 @@ const SolvePage = () => {
       
       setOutput(`Submission received and queued for evaluation. Submission ID: ${response.data.submission_id}`);
       
-      // Store the submission ID to check its status
-      setSubmissionId(response.data.submission_id);
+      setSubmissionId(response.data.submission.id);
       setSubmissionStatus('pending');
-      
     } catch (error) {
       console.error('Error submitting solution:', error);
       setOutput(`Submission error: ${error.response?.data?.message || error.message}`);
@@ -193,18 +289,22 @@ const SolvePage = () => {
     setCode(value);
   };
 
-  // Helper function to get language ID for Judge0 API
-  const getLanguageId = (lang) => {
-    const languageMap = {
-      'javascript': 63,  // Node.js
-      'python': 71,     // Python 3
-      'java': 62,       // Java
-      'cpp': 54,        // C++
-    };
-    return languageMap[lang] || 63; // Default to JavaScript/Node.js
+  const openSubmissionModal = () => {
+    setSubmissionTitle('');
+    setSubmissionExplanation('');
+    setIsSubmissionModalOpen(true);
   };
 
-  // Helper function to get status badge color
+  const getLanguageId = (lang) => {
+    const languageMap = {
+      'javascript': 63,
+      'python': 71,
+      'java': 62,
+      'cpp': 54,
+    };
+    return languageMap[lang] || 63;
+  };
+
   const getStatusBadgeColor = (status) => {
     const statusColorMap = {
       'pending': 'bg-yellow-100 text-yellow-800',
@@ -218,7 +318,68 @@ const SolvePage = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
-      {/* Navbar */}
+      {/* Submission Modal */}
+      <Dialog open={isSubmissionModalOpen} onOpenChange={setIsSubmissionModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share Your Solution</DialogTitle>
+            <DialogDescription>
+              Provide a title and explanation for your submitted solution.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="title" className="text-right">
+                Title
+              </Label>
+              <Input 
+                id="title" 
+                value={submissionTitle}
+                onChange={(e) => setSubmissionTitle(e.target.value)}
+                placeholder="Give your solution a descriptive title"
+                className="col-span-3" 
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="explanation" className="text-right">
+                Explanation
+              </Label>
+              <Textarea 
+                id="explanation" 
+                value={submissionExplanation}
+                onChange={(e) => setSubmissionExplanation(e.target.value)}
+                placeholder="Explain your solution approach, key algorithms, or interesting techniques"
+                className="col-span-3 min-h-[100px]"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Submitted Code</Label>
+              <div className="col-span-3 bg-gray-100 p-2 rounded max-h-[200px] overflow-y-auto">
+                <pre className="text-xs">{code}</pre>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsSubmissionModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={postPublicSubmission}
+              disabled={!submissionTitle.trim() || isRunning}
+            >
+              {isRunning ? 'Posting...' : 'Post Solution'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <nav className="bg-gray-800 text-white p-4 shadow-md">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex space-x-4">
@@ -230,9 +391,7 @@ const SolvePage = () => {
         </div>
       </nav>
 
-      {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Question Panel */}
         <div className="w-1/3 bg-gray-200 overflow-y-auto p-6 border-r border-gray-300">
           <h2 className="text-2xl font-bold mb-4">Question Details</h2>
           
@@ -295,9 +454,7 @@ const SolvePage = () => {
           )}
         </div>
 
-        {/* Code Editor and Console */}
         <div className="flex flex-col flex-1">
-          {/* Editor Controls */}
           <div className="bg-gray-800 text-white p-3 flex justify-between items-center">
             <div className="flex items-center space-x-3">
               <select 
@@ -348,10 +505,19 @@ const SolvePage = () => {
               >
                 {isRunning && (submissionStatus === 'pending' || submissionStatus === 'processing') ? 'Processing...' : 'Submit'}
               </button>
+              
+              {submissionStatus === 'accepted' && (
+                <button 
+                  className={`ml-2 px-4 py-1 rounded font-medium ${isRunning ? 'bg-gray-600' : 'bg-purple-600 hover:bg-purple-700'}`}
+                  onClick={openSubmissionModal}
+                  disabled={isRunning}
+                >
+                  {isRunning ? 'Posting...' : 'Post Publicly'}
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Code Editor */}
           <div className="flex-1 overflow-hidden">
             <Editor
               height="100%"
@@ -370,7 +536,6 @@ const SolvePage = () => {
             />
           </div>
 
-          {/* Console Output */}
           <div className="h-48 bg-gray-200 p-3 overflow-y-auto">
             <h3 className="text-lg font-medium mb-2">Console Output</h3>
             <pre className="bg-white p-3 rounded h-32 overflow-y-auto">

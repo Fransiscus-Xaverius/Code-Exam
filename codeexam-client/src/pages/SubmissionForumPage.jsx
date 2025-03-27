@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  UserCircle, Code, Trophy, Users, Clock, Database, 
-  Filter, Search, ThumbsUp, MessageSquare, ChevronUp, 
-  ChevronDown, BookOpen, LogOut, Tag, CheckCircle, XCircle 
+  UserCircle, Code, Trophy, Users, 
+  Filter, Search, ThumbsUp, MessageSquare, 
+  ChevronUp, ChevronDown, BookOpen, 
+  LogOut, CheckCircle, XCircle 
 } from 'lucide-react';
 import axios from 'axios';
+import API from '../components/helpers/API'
 
 const SubmissionsForumPage = () => {
+  // State Management
   const [submissions, setSubmissions] = useState([]);
   const [comments, setComments] = useState({});
   const [expandedSubmission, setExpandedSubmission] = useState(null);
@@ -14,39 +17,31 @@ const SubmissionsForumPage = () => {
   const [userRole, setUserRole] = useState('competitor');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all', 'accepted', 'rejected'
-  const [sort, setSort] = useState('newest'); // 'newest', 'most-liked', 'most-discussed'
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('popular'); // 'popular', 'recent', 'my-submissions'
   
-  // Fetch submissions from API
+  // Filtering and Sorting States
+  const [filter, setFilter] = useState('all');
+  const [sort, setSort] = useState('newest');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('popular');
+
+  // Fetch Submissions
   useEffect(() => {
     const fetchSubmissions = async () => {
       try {
         setIsLoading(true);
-        // Get token from localStorage
         const token = localStorage.getItem('codeexam_token');
         
-        // Mock API endpoint would be different in production
-        const response = await axios.get('/api/submissions', {
-          headers: {
-            Authorization: token ? `Bearer ${token}` : ''
-          },
-          params: {
-            filter,
-            sort,
-            search: searchQuery,
-            tab: activeTab
-          }
+        const response = await API.get('/api/submissions/public', {
+          headers: { Authorization: token ? `Bearer ${token}` : '' },
+          params: { filter, sort, search: searchQuery, tab: activeTab }
         });
         
-        setSubmissions(response.data.submissions || mockSubmissions);
+        setSubmissions(response.data.submissions || []);
         setError(null);
       } catch (err) {
         console.error('Error fetching submissions:', err);
         setError('Failed to load submissions. Please try again later.');
-        // Use mock data for demo
-        setSubmissions(mockSubmissions);
+        setSubmissions([]);
       } finally {
         setIsLoading(false);
       }
@@ -55,248 +50,57 @@ const SubmissionsForumPage = () => {
     fetchSubmissions();
   }, [filter, sort, searchQuery, activeTab]);
 
-  // Mock data for demonstration
-  const mockSubmissions = [
-    {
-      id: 's1',
-      problemId: 'p1',
-      problemTitle: 'Two Sum',
-      userId: 'user1',
-      username: 'alex_coder',
-      language: 'JavaScript',
-      submissionTime: '2025-03-19T14:23:00Z',
-      status: 'accepted',
-      runtime: '82 ms',
-      memory: '42.3 MB',
-      likes: 24,
-      commentCount: 5,
-      code: `function twoSum(nums, target) {
-  const map = new Map();
-  
-  for (let i = 0; i < nums.length; i++) {
-    const complement = target - nums[i];
-    
-    if (map.has(complement)) {
-      return [map.get(complement), i];
-    }
-    
-    map.set(nums[i], i);
-  }
-  
-  return null;
-}`,
-      explanation: "I used a hashmap to store each number and its index. For each number, I check if its complement (target - current number) exists in the map. This gives us O(n) time complexity rather than the O(n²) of a brute force approach."
-    },
-    {
-      id: 's2',
-      problemId: 'p2',
-      problemTitle: 'Longest Palindromic Substring',
-      userId: 'user2',
-      username: 'pythonista42',
-      language: 'Python',
-      submissionTime: '2025-03-19T10:45:00Z',
-      status: 'accepted',
-      runtime: '128 ms',
-      memory: '14.2 MB',
-      likes: 37,
-      commentCount: 8,
-      code: `def longestPalindrome(s):
-    if not s:
-        return ""
-    
-    start = 0
-    max_len = 1
-    
-    # Helper function to expand around center
-    def expand_around_center(left, right):
-        while left >= 0 and right < len(s) and s[left] == s[right]:
-            left -= 1
-            right += 1
-        return right - left - 1
-    
-    for i in range(len(s)):
-        # Odd length palindrome
-        len1 = expand_around_center(i, i)
-        # Even length palindrome
-        len2 = expand_around_center(i, i + 1)
-        
-        # Get the maximum length from the two cases
-        length = max(len1, len2)
-        
-        # Update global maximum if needed
-        if length > max_len:
-            max_len = length
-            start = i - (length - 1) // 2
-    
-    return s[start:start + max_len]`,
-      explanation: "My approach uses the 'expand around center' technique. For each character, I try to expand outwards checking both odd and even length palindromes. This avoids the O(n³) complexity of a naive approach."
-    },
-    {
-      id: 's3',
-      problemId: 'p3',
-      problemTitle: 'Maximum Subarray',
-      userId: 'user3',
-      username: 'java_master',
-      language: 'Java',
-      submissionTime: '2025-03-18T22:10:00Z',
-      status: 'rejected',
-      runtime: 'N/A',
-      memory: 'N/A',
-      likes: 5,
-      commentCount: 12,
-      code: `public int maxSubArray(int[] nums) {
-    if (nums == null || nums.length == 0) {
-        return 0;
-    }
-    
-    int currentSum = nums[0];
-    int maxSum = nums[0];
-    
-    for (int i = 1; i < nums.length; i++) {
-        // Incorrect: should be max(nums[i], currentSum + nums[i])
-        currentSum = currentSum + nums[i];
-        maxSum = Math.max(maxSum, currentSum);
-        
-        if (currentSum < 0) {
-            currentSum = 0;
-        }
-    }
-    
-    return maxSum;
-}`,
-      explanation: "I tried to implement Kadane's algorithm which should be O(n) time complexity. Not sure why it's failing on some test cases."
-    },
-    {
-      id: 's4',
-      problemId: 'p4',
-      problemTitle: 'Merge Intervals',
-      userId: 'user4',
-      username: 'cpp_wizard',
-      language: 'C++',
-      submissionTime: '2025-03-18T16:30:00Z',
-      status: 'accepted',
-      runtime: '35 ms',
-      memory: '18.6 MB',
-      likes: 18,
-      commentCount: 3,
-      code: `class Solution {
-public:
-    vector<vector<int>> merge(vector<vector<int>>& intervals) {
-        if (intervals.empty()) {
-            return {};
-        }
-        
-        // Sort intervals based on start time
-        sort(intervals.begin(), intervals.end(), 
-             [](const vector<int>& a, const vector<int>& b) {
-                 return a[0] < b[0];
-             });
-        
-        vector<vector<int>> merged;
-        merged.push_back(intervals[0]);
-        
-        for (int i = 1; i < intervals.size(); i++) {
-            if (intervals[i][0] <= merged.back()[1]) {
-                // Overlapping intervals, update end time
-                merged.back()[1] = max(merged.back()[1], intervals[i][1]);
-            } else {
-                // Non-overlapping interval, add to result
-                merged.push_back(intervals[i]);
-            }
-        }
-        
-        return merged;
-    }
-};`,
-      explanation: "First, I sort the intervals by start time. Then, I iterate through the intervals and either merge them with the previous interval if they overlap, or add them to the result if they don't. This gives an O(n log n) time complexity due to the sorting step."
-    }
-  ];
-
-  // Mock comments data
-  const mockComments = {
-    's1': [
-      { id: 'c1', userId: 'user5', username: 'debugexpert', content: 'Great solution! Very clean implementation of the hash map approach.', timestamp: '2025-03-19T15:10:00Z', likes: 8 },
-      { id: 'c2', userId: 'user6', username: 'algorithm_lover', content: 'You could also solve this with a two-pointer approach if the array is sorted, but this is optimal for unsorted arrays.', timestamp: '2025-03-19T16:05:00Z', likes: 3 }
-    ],
-    's2': [
-      { id: 'c3', userId: 'user7', username: 'code_reviewer', content: 'Excellent use of the expand around center technique! Have you tried Manacher\'s algorithm for this problem?', timestamp: '2025-03-19T11:30:00Z', likes: 5 },
-      { id: 'c4', userId: 'user8', username: 'pythonlearner', content: 'Could you explain more about how you handle the odd vs. even length palindromes?', timestamp: '2025-03-19T13:15:00Z', likes: 2 }
-    ],
-    's3': [
-      { id: 'c5', userId: 'user9', username: 'bug_hunter', content: 'I think your issue is in how you\'re updating currentSum. It should be max(nums[i], currentSum + nums[i]) instead of just adding.', timestamp: '2025-03-18T23:05:00Z', likes: 10 },
-      { id: 'c6', userId: 'user10', username: 'java_dev', content: 'Also, resetting currentSum to 0 when it\'s negative isn\'t quite right for Kadane\'s algorithm when there are all negative numbers.', timestamp: '2025-03-19T08:45:00Z', likes: 7 }
-    ]
-  };
-
-  // Toggle code expansion for a submission
+  // Toggle Submission Expansion
   const toggleSubmission = (submissionId) => {
-    if (expandedSubmission === submissionId) {
-      setExpandedSubmission(null);
-    } else {
-      setExpandedSubmission(submissionId);
-      // Fetch comments for this submission if not already loaded
-      if (!comments[submissionId]) {
-        fetchComments(submissionId);
-      }
-    }
-  };
-
-  // Toggle comments visibility
-  const toggleComments = (submissionId) => {
-    setExpandedComments(prev => ({
-      ...prev,
-      [submissionId]: !prev[submissionId]
-    }));
-    
-    // Fetch comments if not already loaded
+    setExpandedSubmission(
+      expandedSubmission === submissionId ? null : submissionId
+    );
     if (!comments[submissionId]) {
       fetchComments(submissionId);
     }
   };
 
-  // Fetch comments for a submission
-  const fetchComments = async (submissionId) => {
-    try {
-      // In a real app, you'd fetch from API
-      // const response = await axios.get(`/api/forum/submissions/${submissionId}/comments`);
-      // setComments(prev => ({ ...prev, [submissionId]: response.data.comments }));
-      
-      // Using mock data for demo
-      setComments(prev => ({ 
-        ...prev, 
-        [submissionId]: mockComments[submissionId] || [] 
-      }));
-    } catch (err) {
-      console.error('Error fetching comments:', err);
+  // Toggle Comments Visibility
+  const toggleComments = (submissionId) => {
+    setExpandedComments(prev => ({
+      ...prev,
+      [submissionId]: !prev[submissionId]
+    }));
+    if (!comments[submissionId]) {
+      fetchComments(submissionId);
     }
   };
 
-  // Add a comment to a submission
+  // Fetch Comments
+  const fetchComments = async (submissionId) => {
+    try {
+      const response = await API.get(`/api/discussions/${submissionId}/comments`);
+      setComments(prev => ({ 
+        ...prev, 
+        [submissionId]: response.data.comments || [] 
+      }));
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+      setComments(prev => ({ ...prev, [submissionId]: [] }));
+    }
+  };
+
+  // Add Comment
   const addComment = async (submissionId, commentText) => {
     if (!commentText.trim()) return;
     
     try {
-      // In a real app, you'd post to API
-      // const response = await axios.post(`/api/forum/submissions/${submissionId}/comments`, {
-      //   content: commentText
-      // });
+      const response = await API.post(`/api/discussions/${submissionId}/comments`, {
+        content: commentText
+      });
       
-      // For demo, simulate adding a comment
-      const newComment = {
-        id: `c${Date.now()}`,
-        userId: 'current-user',
-        username: 'current_user',
-        content: commentText,
-        timestamp: new Date().toISOString(),
-        likes: 0
-      };
+      const newComment = response.data.comment;
       
       setComments(prev => ({
         ...prev,
         [submissionId]: [...(prev[submissionId] || []), newComment]
       }));
 
-      // Update comment count in submissions
       setSubmissions(prev => 
         prev.map(sub => 
           sub.id === submissionId 
@@ -309,13 +113,11 @@ public:
     }
   };
 
-  // Like a submission
+  // Like Submission
   const likeSubmission = async (submissionId) => {
     try {
-      // In a real app, you'd post to API
-      // await axios.post(`/api/forum/submissions/${submissionId}/like`);
+      await API.post(`/api/discussions/${submissionId}/like`);
       
-      // For demo, simulate liking
       setSubmissions(prev => 
         prev.map(sub => 
           sub.id === submissionId 
@@ -328,7 +130,7 @@ public:
     }
   };
 
-  // Format date to relative time
+  // Utility Functions
   const formatRelativeTime = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -340,7 +142,7 @@ public:
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
   };
 
-  // Status badge component
+  // Component Rendering Helpers
   const StatusBadge = ({ status }) => {
     const colorClass = 
       status === 'accepted' ? 'bg-green-500' : 
@@ -356,7 +158,6 @@ public:
     );
   };
 
-  // Language badge component
   const LanguageBadge = ({ language }) => {
     const colorClass = 
       language === 'JavaScript' ? 'bg-yellow-400 text-black' : 
@@ -371,7 +172,6 @@ public:
     );
   };
 
-  // Comment form component
   const CommentForm = ({ submissionId }) => {
     const [commentText, setCommentText] = useState('');
     
@@ -403,7 +203,7 @@ public:
     );
   };
 
-  // Sidebar navigation
+  // Sidebar Rendering
   const renderSidebar = () => {
     const commonItems = [
       { icon: <Code className="h-5 w-5" />, label: 'Problems' },
@@ -414,15 +214,11 @@ public:
     const roleSpecificItems = {
       competitor: [
         { icon: <UserCircle className="h-5 w-5" />, label: 'My Profile' },
-        { icon: <Database className="h-5 w-5" />, label: 'My Submissions' },
         { icon: <BookOpen className="h-5 w-5" />, label: 'Learning Resources' },
       ],
       admin: [
         { icon: <Users className="h-5 w-5" />, label: 'Manage Users' },
-        { icon: <Database className="h-5 w-5" />, label: 'All Submissions' },
-      ],
-      judge: [
-        { icon: <Database className="h-5 w-5" />, label: 'Review Submissions' },
+        { icon: <Filter className="h-5 w-5" />, label: 'All Submissions' },
       ]
     };
     
@@ -440,7 +236,7 @@ public:
           <ul>
             {items.map((item, index) => (
               <li key={index}>
-                <a href="#" className={`flex items-center px-4 py-3 hover:bg-gray-700 ${item.label === 'Discussions' ? 'bg-gray-700' : ''}`}>
+                <a href="#" className="flex items-center px-4 py-3 hover:bg-gray-700">
                   {item.icon}
                   <span className="ml-3">{item.label}</span>
                 </a>
@@ -450,7 +246,7 @@ public:
         </nav>
         <div className="absolute bottom-4 left-0 right-0 px-4">
           <button 
-            onClick={() => setUserRole(userRole === 'competitor' ? 'admin' : userRole === 'admin' ? 'judge' : 'competitor')} 
+            onClick={() => setUserRole(userRole === 'competitor' ? 'admin' : 'competitor')} 
             className="w-full bg-gray-700 text-white py-2 px-4 rounded hover:bg-gray-600 text-sm"
           >
             Switch Role (Demo)
@@ -466,7 +262,7 @@ public:
     );
   };
 
-  // Render the submissions list
+  // Submissions Rendering
   const renderSubmissions = () => {
     if (isLoading) {
       return <div className="text-center py-10">Loading submissions...</div>;
@@ -477,24 +273,24 @@ public:
     }
     
     if (submissions.length === 0) {
-      return <div className="text-center py-10">No submissions found matching your criteria.</div>;
+      return <div className="text-center py-10">No submissions found.</div>;
     }
     
     return (
       <div className="space-y-4">
         {submissions.map(submission => (
           <div key={submission.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-            {/* Submission header */}
+            {/* Submission Header */}
             <div className="p-4 border-b">
               <div className="flex justify-between items-start">
                 <div>
-                  <a href={`/problems/${submission.problemId}`} className="text-lg font-medium text-blue-600 hover:underline">
+                  <h3 className="text-lg font-medium text-blue-600">
                     {submission.problemTitle}
-                  </a>
+                  </h3>
                   <div className="flex items-center mt-1 space-x-2">
-                    <a href={`/users/${submission.userId}`} className="text-sm text-gray-600 hover:underline">
+                    <span className="text-sm text-gray-600">
                       {submission.username}
-                    </a>
+                    </span>
                     <span className="text-xs text-gray-500">
                       {formatRelativeTime(submission.submissionTime)}
                     </span>
@@ -506,19 +302,18 @@ public:
                 </div>
               </div>
               
-              {/* Metrics row */}
+              {/* Metrics Row */}
               <div className="flex mt-3 text-sm text-gray-600 space-x-4">
                 {submission.status === 'accepted' && (
                   <>
-                    <div>
-                      <span className="font-medium">Runtime:</span> {submission.runtime}
-                    </div>
-                    <div>
-                      <span className="font-medium">Memory:</span> {submission.memory}
-                    </div>
+                    <div>Runtime: {submission.runtime}</div>
+                    <div>Memory: {submission.memory}</div>
                   </>
                 )}
-                <div className="flex items-center cursor-pointer" onClick={() => likeSubmission(submission.id)}>
+                <div 
+                  className="flex items-center cursor-pointer" 
+                  onClick={() => likeSubmission(submission.id)}
+                >
                   <ThumbsUp className="h-4 w-4 mr-1" />
                   <span>{submission.likes}</span>
                 </div>
@@ -541,7 +336,7 @@ public:
               </div>
             </div>
             
-            {/* Expanded code section */}
+            {/* Expanded Code Section */}
             {expandedSubmission === submission.id && (
               <div className="p-4 bg-gray-50">
                 <div className="mb-4">
@@ -560,18 +355,18 @@ public:
               </div>
             )}
             
-            {/* Comments section */}
+            {/* Comments Section */}
             {expandedComments[submission.id] && (
               <div className="p-4 bg-gray-100 border-t">
                 <h3 className="text-md font-medium mb-2">Comments:</h3>
-                {comments[submission.id] && comments[submission.id].length > 0 ? (
+                {comments[submission.id]?.length ? (
                   <div className="space-y-3">
                     {comments[submission.id].map(comment => (
                       <div key={comment.id} className="bg-white p-3 rounded shadow-sm">
                         <div className="flex justify-between">
-                          <a href={`/users/${comment.userId}`} className="font-medium text-blue-600 hover:underline">
+                          <span className="font-medium text-blue-600">
                             {comment.username}
-                          </a>
+                          </span>
                           <span className="text-xs text-gray-500">
                             {formatRelativeTime(comment.timestamp)}
                           </span>
@@ -597,6 +392,7 @@ public:
     );
   };
 
+  // Main Component Render
   return (
     <div className="flex min-h-screen bg-gray-100">
       {renderSidebar()}
@@ -609,7 +405,7 @@ public:
           </p>
         </div>
         
-        {/* Filters and search */}
+        {/* Filters and Search */}
         <div className="mb-6 flex flex-wrap gap-4">
           <div className="flex-1 min-w-[300px]">
             <div className="relative">
@@ -650,34 +446,25 @@ public:
         {/* Tabs */}
         <div className="mb-6 border-b">
           <div className="flex space-x-4">
-            <button
-              onClick={() => setActiveTab('popular')}
-              className={`py-2 px-4 border-b-2 ${
-                activeTab === 'popular' ? 'border-blue-500 text-blue-600' : 'border-transparent hover:text-blue-500'
-              }`}
-            >
-              Popular
-            </button>
-            <button
-              onClick={() => setActiveTab('recent')}
-              className={`py-2 px-4 border-b-2 ${
-                activeTab === 'recent' ? 'border-blue-500 text-blue-600' : 'border-transparent hover:text-blue-500'
-              }`}
-            >
-              Recent
-            </button>
-            <button
-              onClick={() => setActiveTab('my-submissions')}
-              className={`py-2 px-4 border-b-2 ${
-                activeTab === 'my-submissions' ? 'border-blue-500 text-blue-600' : 'border-transparent hover:text-blue-500'
-              }`}
-            >
-              My Submissions
-            </button>
+            {['popular', 'recent', 'my-submissions'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-2 px-4 border-b-2 ${
+                  activeTab === tab 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent hover:text-blue-500'
+                }`}
+              >
+                {tab.replace('-', ' ').split(' ').map(word => 
+                  word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ')}
+              </button>
+            ))}
           </div>
         </div>
         
-        {/* Submissions list */}
+        {/* Submissions List */}
         {renderSubmissions()}
       </div>
     </div>

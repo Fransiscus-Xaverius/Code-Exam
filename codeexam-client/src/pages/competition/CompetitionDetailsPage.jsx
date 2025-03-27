@@ -7,6 +7,7 @@ import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { Alert } from '../../components/Alert';
 import Sidebar from '../../components/Sidebar';
+import API from '../../components/helpers/API'
 
 const CompetitionDetailsPage = () => {
   const navigate = useNavigate();
@@ -31,12 +32,12 @@ const CompetitionDetailsPage = () => {
       const headers = { Authorization: token ? `Bearer ${token}` : '' };
 
       const requests = [
-        axios.get(`/api/competitions/${id}`, { headers })
+        API.get(`/api/competitions/${id}`, { headers })
       ];
 
       if (user?.role === 'admin' || user?.role === 'judge') {
         requests.push(
-          axios.get(`/api/competitions/${id}/participants`, { headers })
+          API.get(`/api/competitions/${id}/participants`, { headers })
         );
       }
 
@@ -62,7 +63,7 @@ const CompetitionDetailsPage = () => {
   const handleRegister = async () => {
     try {
       setRegistering(true);
-      await axios.post(`/api/competitions/${id}/join`, {}, {
+      await API.post(`/api/competitions/${id}/join`, {}, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
 
@@ -101,7 +102,7 @@ const CompetitionDetailsPage = () => {
   const handleDelete = async () => {
     try {
       setDeleting(true);
-      await axios.delete(`/api/competitions/${id}`, {
+      await API.delete(`/api/competitions/${id}`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
       navigate('/competitions');

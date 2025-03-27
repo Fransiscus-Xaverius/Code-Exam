@@ -27,16 +27,27 @@ exports.createSubmission = async (req, res, next) => {
     }
     
     // Create submission
-    const submission = await Submission.create({
-      user_id: req.user.id,
-      problem_id,
-      competition_id: competition_id || null,
-      code,
-      language,
-      status: 'pending',
-      submitted_at: new Date()
-    });
+    // const submission = await Submission.create({
+    //   user_id: req.user.id,
+    //   problem_id,
+    //   competition_id: competition_id || null,
+    //   code,
+    //   language,
+    //   status: 'pending',
+    //   submitted_at: new Date()
+    // });
     
+    // use to debug
+    const submission = await Submission.create({
+        user_id: req.user.id,
+        problem_id,
+        competition_id: competition_id || null,
+        code,
+        language,
+        status: 'accepted',
+        submitted_at: new Date()
+    });  
+
     // TODO: Queue for judging (in a real application, you'd trigger the judge process)
     
     res.status(201).json({
@@ -220,7 +231,7 @@ exports.publishSubmission = async (req, res, next) => {
         });
       }
       
-      // Only allow publishing of accepted submissions
+    //   Only allow publishing of accepted submissions
       if (submission.status !== 'accepted') {
         return res.status(400).json({
           success: false,
@@ -230,6 +241,8 @@ exports.publishSubmission = async (req, res, next) => {
       
       submission.is_published = true;
       await submission.save();
+
+      
       
       res.status(200).json({
         success: true,

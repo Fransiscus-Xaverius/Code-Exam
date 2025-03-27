@@ -20,6 +20,8 @@ import ProblemsList from '../components/dashboard/ProblemsList';
 // import DifficultyBadge from '../components/dashboard/DifficultyBadge';
 // import StatusIndicator from '../components/dashboard/StatusIndicator';
 
+import API from '../components/helpers/API'
+
 const CodeExamDashboard = () => {
   // State management
   const [problems, setProblems] = useState([]);
@@ -83,7 +85,7 @@ const CodeExamDashboard = () => {
       params.append('sortBy', sortBy);
       params.append('sortOrder', sortOrder);
 
-      const response = await axios.get(`/api/problems?${params}`, {
+      const response = await API.get(`/api/problems?${params}`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
 
@@ -100,7 +102,7 @@ const CodeExamDashboard = () => {
       // For judge role, fetch pending submissions count
       if (userRole === 'judge') {
         try {
-          const submissionsResponse = await axios.get('/api/submissions/pending', {
+          const submissionsResponse = await API.get('/api/submissions/pending', {
             headers: { Authorization: token ? `Bearer ${token}` : '' }
           });
           
@@ -115,7 +117,7 @@ const CodeExamDashboard = () => {
       // For competitor role, check if there's an active competition
       if (userRole === 'competitor') {
         try {
-          const competitionsResponse = await axios.get('/api/competitions/active', {
+          const competitionsResponse = await API.get('/api/competitions/active', {
             headers: { Authorization: token ? `Bearer ${token}` : '' }
           });
           
@@ -551,7 +553,7 @@ const CodeExamDashboard = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(`/api/problems/${deleteModal.problem.id}`, {
+      await API.delete(`/api/problems/${deleteModal.problem.id}`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
 

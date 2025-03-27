@@ -2,6 +2,8 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+import API from '../components/helpers/API'
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -16,16 +18,16 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('codeexam_token');
         if (token) {
           // Set default authorization header
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
           // Verify token is valid
-          const response = await axios.get('/api/auth/me');
+          const response = await API.get('/api/auth/me');
           setUser(response.data.user);
         }
       } catch (error) {
         // Token invalid or expired
         localStorage.removeItem('codeexam_token');
-        delete axios.defaults.headers.common['Authorization'];
+        delete API.defaults.headers.common['Authorization'];
       } finally {
         setLoading(false);
       }
@@ -35,12 +37,12 @@ export const AuthProvider = ({ children }) => {
   }, []);
   
   const login = async (email, password) => {
-    const response = await axios.post('/api/auth/login', { email, password });
+    const response = await API.post('/api/auth/login', { email, password });
     const { token, user } = response.data;
     
     // Save token and set axios default header
     localStorage.setItem('codeexam_token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     
     setUser(user);
     navigate('/dashboard');
@@ -49,17 +51,17 @@ export const AuthProvider = ({ children }) => {
   
   const logout = () => {
     localStorage.removeItem('codeexam_token');
-    delete axios.defaults.headers.common['Authorization'];
+    delete API.defaults.headers.common['Authorization'];
     setUser(null);
     navigate('/login');
   };
   
   const register = async (userData) => {
-    const response = await axios.post('/api/auth/register', userData);
+    const response = await API.post('/api/auth/register', userData);
     const { token, user } = response.data;
     
     localStorage.setItem('codeexam_token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     
     setUser(user);
     navigate('/dashboard');

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
+import API from '../../components/helpers/API'
 import { Save, ArrowLeft, Calendar, Globe, Plus, Trash2, GripVertical, BookOpen } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -60,7 +61,7 @@ const CompetitionFormPage = () => {
     const handleAddProblem = async (problem) => {
     try {
       const headers = { Authorization: token ? `Bearer ${token}` : '' };
-      const response = await axios.post(
+      const response = await API.post(
         `/api/competitions/${id}/problems`,
         {
           problem_id: problem.id,
@@ -83,7 +84,7 @@ const CompetitionFormPage = () => {
   const handleRemoveProblem = async (problemId) => {
     try {
       const headers = { Authorization: token ? `Bearer ${token}` : '' };
-      await axios.delete(`/api/competitions/${id}/problems/${problemId}`, { headers });
+      await API.delete(`/api/competitions/${id}/problems/${problemId}`, { headers });
 
       const removedProblem = selectedProblems.find(p => p.id === problemId);
       setSelectedProblems(prev => {
@@ -119,7 +120,7 @@ const CompetitionFormPage = () => {
 
       // Update in backend
       const headers = { Authorization: token ? `Bearer ${token}` : '' };
-      await axios.put(
+      await API.put(
         `/api/competitions/${id}/problems/${movedProblem.id}`,
         { order_index: destinationIndex },
         { headers }
@@ -148,7 +149,7 @@ const CompetitionFormPage = () => {
         setIsLoading(true);
         const headers = { Authorization: token ? `Bearer ${token}` : '' };
 
-        const response = await axios.get(`/api/competitions/${id}`, { headers });
+        const response = await API.get(`/api/competitions/${id}`, { headers });
 
         // Populate form with existing data
         const competition = response.data.data;
@@ -182,7 +183,7 @@ const CompetitionFormPage = () => {
 
     try {
       const headers = { Authorization: token ? `Bearer ${token}` : '' };
-      const response = await axios.get(`/api/competitions/${id}/problems`, { headers });
+      const response = await API.get(`/api/competitions/${id}/problems`, { headers });
       let problems = [];
       if (response.data.success) {
         // Sort problems by order_index
@@ -195,7 +196,7 @@ const CompetitionFormPage = () => {
         setSelectedProblems([]);
       }
 
-      const allProblemsResponse = await axios.get('/api/problems', { headers });
+      const allProblemsResponse = await API.get('/api/problems', { headers });
       console.log({ allProblemsResponse });
       const allProblems = allProblemsResponse.data.problems || [];
       const competitionProblemIds = problems.map(p => p.problem_id);
@@ -287,10 +288,10 @@ const CompetitionFormPage = () => {
 
       if (isEditMode) {
         // Update existing competition
-        response = await axios.put(`/api/competitions/${id}`, requestData, { headers });
+        response = await API.put(`/api/competitions/${id}`, requestData, { headers });
       } else {
         // Create new competition
-        response = await axios.post('/api/competitions', requestData, { headers });
+        response = await API.post('/api/competitions', requestData, { headers });
       }
 
       if (response.data.success) {

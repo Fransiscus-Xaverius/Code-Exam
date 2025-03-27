@@ -29,7 +29,7 @@ const CodeExamDashboard = () => {
         const token = localStorage.getItem('codeexam_token');
         
         // Make API request with authorization header
-        const response = await axios.get('/api/problems', {
+        const response = await API.get('/api/problems', {
           headers: {
             Authorization: token ? `Bearer ${token}` : ''
           }

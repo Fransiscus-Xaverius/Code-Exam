@@ -5,6 +5,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from '../components/Sidebar'; // Import the Sidebar component
 import { useSelector } from 'react-redux'; // Import useSelector
 
+import API from '../components/helpers/API'
+
 const ProblemFormPage = () => {
   const navigate = useNavigate();
   const { id } = useParams(); // Get problem ID from URL if editing
@@ -58,7 +60,7 @@ const ProblemFormPage = () => {
       try {
         setIsLoading(true);
         
-        const response = await axios.get(`/api/problems/${id}`, {
+        const response = await API.get(`/api/problems/${id}`, {
           headers: {
             Authorization: token ? `Bearer ${token}` : ''
           }
@@ -146,9 +148,9 @@ const ProblemFormPage = () => {
       
       // Make API request based on mode (add or edit)
       if (isEditMode) {
-        await axios.put(`/api/problems/${id}`, submitData, { headers });
+        await API.put(`/api/problems/${id}`, submitData, { headers });
       } else {
-        await axios.post('/api/problems', submitData, { headers });
+        await API.post('/api/problems', submitData, { headers });
       }
       
       setSuccess(true);
