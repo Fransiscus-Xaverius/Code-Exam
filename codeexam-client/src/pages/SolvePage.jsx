@@ -220,7 +220,7 @@ const SolvePage = () => {
     try {
       const token = localStorage.getItem('codeexam_token');
       
-      const response = await API.post('/api/submissions/run', {
+      const response = await API.post('/api/submissions/run-code', {
         problem_id: id,
         source_code: code,
         language_id: getLanguageId(language)
