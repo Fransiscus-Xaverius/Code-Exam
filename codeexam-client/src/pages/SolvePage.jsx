@@ -226,7 +226,7 @@ const SolvePage = () => {
 
     try {
       const token = localStorage.getItem('codeexam_token');
-
+      
       const response = await API.post('/api/submissions/run-code', {
         problem_id: id,
         code: code,
