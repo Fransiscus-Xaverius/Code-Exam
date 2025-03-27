@@ -13,9 +13,9 @@ async function submitToJudge0(submissionId, sourceCode, languageId, testCases) {
             source_code: sourceCode,
             language_id: languageId,
             stdin: testCase.input,
-            expected_output: testCase.expectedOutput
+            expected_output: testCase.output
         }));
-
+        console.log("SUBMISSIONS OBJECT", { submissions,testCases })
         // Submit batch request
         const createResponse = await axios.post(`${process.env.JUDGE0_API_URL}/submissions/batch`, {
             submissions
@@ -40,7 +40,7 @@ async function submitToJudge0(submissionId, sourceCode, languageId, testCases) {
                     tokens: tokens.join(',')
                 }
             });
-            console.log({ checkResponse: checkResponse.data })
+            console.log({ checkResponse: JSON.stringify(checkResponse.data) })
 
             // Ensure allSubmissions is an array
             const allSubmissions = Array.isArray(checkResponse.data.submissions) ? checkResponse.data.submissions : [checkResponse.data.submissions];
@@ -102,7 +102,7 @@ async function updateSubmissionStatus(submissionId, status) {
 async function updateSubmissionError(submissionId, errorMessage) {
     try {
         await Submission.update(
-            { 
+            {
                 status: 'error',
                 error_message: errorMessage,
                 completed_at: new Date()
@@ -122,17 +122,19 @@ async function processResults(submissionId, results) {
         const totalTests = results.length;
         const passedTests = results.filter(result => result.status.id === 3).length; // 3 = Accepted
         const score = Math.round((passedTests / totalTests) * 100);
-        
+
         // Calculate average runtime and memory
         const runtimes = results.map(r => parseFloat(r.time) || 0);
         const memories = results.map(r => parseFloat(r.memory) || 0);
         const avgRuntime = runtimes.reduce((a, b) => a + b, 0) / runtimes.length;
         const avgMemory = memories.reduce((a, b) => a + b, 0) / memories.length;
-        
+
         // Determine overall status
         const allPassed = passedTests === totalTests;
-        const status = allPassed ? 'accepted' : 'rejected';
         
+        // Set status to "accepted" or "wrong_answer" based on test results
+        const status = allPassed ? 'accepted' : 'wrong_answer';
+        console.log({status})
         // Format test results for storage
         const testResults = results.map((result, index) => ({
             passed: result.status.id === 3,
@@ -143,7 +145,7 @@ async function processResults(submissionId, results) {
             stderr: result.stderr,
             compile_output: result.compile_output
         }));
-        
+
         // Update submission with results
         await Submission.update(
             {
@@ -156,7 +158,7 @@ async function processResults(submissionId, results) {
             },
             { where: { id: submissionId } }
         );
-        
+
         console.log(`[Judge0] Processed results for submission ${submissionId}: status=${status}, score=${score}`);
     } catch (error) {
         console.error(`[Judge0] Error processing results for submission ${submissionId}:`, error);
