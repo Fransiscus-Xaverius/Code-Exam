@@ -14,6 +14,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import CompetitionFormPage from './pages/competition/CompetitionFormPage';
 import SubmissionsForumPage from './pages/SubmissionForumPage';
+import FrontendSolvePage from './pages/FrontEndSolvePage';
 
 // Responsive wrapper component
 const ResponsiveWrapper = ({ children }) => {
@@ -90,6 +91,12 @@ const AppRoutes = () => {
         <Route path='/solve/:id' element={
           <ProtectedRoute>
             <SolvePage />
+          </ProtectedRoute>
+        } />
+
+        <Route path='/solve-fe/:id' element={
+          <ProtectedRoute>
+            <FrontendSolvePage />
           </ProtectedRoute>
         } />
 
