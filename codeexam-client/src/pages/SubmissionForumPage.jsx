@@ -284,15 +284,18 @@ const SubmissionsForumPage = () => {
             <div className="p-4 border-b">
               <div className="flex justify-between items-start">
                 <div>
+                  <h2 className='text-lg font-medium text-blue-700'>
+                    {submission.submission_discussions.title}
+                  </h2>
                   <h3 className="text-lg font-medium text-blue-600">
-                    {submission.problemTitle}
+                    Problem: {submission.problem.title}
                   </h3>
                   <div className="flex items-center mt-1 space-x-2">
                     <span className="text-sm text-gray-600">
-                      {submission.username}
+                      by {submission.user.username}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {formatRelativeTime(submission.submissionTime)}
+                      {formatRelativeTime(submission.created_at)}
                     </span>
                   </div>
                 </div>
@@ -346,10 +349,10 @@ const SubmissionsForumPage = () => {
                   </pre>
                 </div>
                 
-                {submission.explanation && (
+                {submission.submission_discussions.content && (
                   <div className="mb-4">
                     <h3 className="text-md font-medium mb-2">Explanation:</h3>
-                    <p className="text-gray-700">{submission.explanation}</p>
+                    <p className="text-gray-700">{submission.submission_discussions.content}</p>
                   </div>
                 )}
               </div>

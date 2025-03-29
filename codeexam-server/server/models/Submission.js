@@ -133,10 +133,4 @@ Submission.belongsTo(User, {
   as: 'judge'
 });
 
-// Association for discussions (will be defined after SubmissionDiscussion model is created)
-// Submission.hasMany(SubmissionDiscussion, {
-//   foreignKey: 'submission_id',
-//   as: 'discussions'
-// });
-
 module.exports = Submission;

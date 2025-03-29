@@ -129,7 +129,7 @@ const AppRoutes = () => {
           </AdminRoute>
         } />
 
-        <Route path="/submissions" element={
+        <Route path="/discussions" element={
           <ProtectedRoute>
             <SubmissionsForumPage />
           </ProtectedRoute>

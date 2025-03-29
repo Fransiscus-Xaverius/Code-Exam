@@ -55,10 +55,4 @@ DiscussionReply.belongsTo(User, {
   as: 'author'
 });
 
-// Association with SubmissionDiscussion model
-DiscussionReply.belongsTo(SubmissionDiscussion, {
-  foreignKey: 'discussion_id',
-  as: 'discussion'
-});
-
 module.exports = DiscussionReply;

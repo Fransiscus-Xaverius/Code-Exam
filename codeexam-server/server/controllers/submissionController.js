@@ -1,4 +1,5 @@
 const Submission = require('../models/Submission');
+const SubmissionDiscussion = require('../models/SubmissionDiscussion')
 const Problem = require('../models/Problem');
 const User = require('../models/User');
 const submitToJudge0 = require('../job/judge0');
@@ -127,7 +128,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
       }
       
       // Get submissions with count
-      const { count, rows: submissions } = await Submission.findAndCountAll({
+      const { count, rows: submissions, submissionDiscussions } = await Submission.findAndCountAll({
         where: filter,
         limit,
         offset: startIndex,
@@ -142,6 +143,11 @@ exports.getPublicSubmissions = async (req, res, next) => {
             model: Problem,
             as: 'problem',
             attributes: ['id', 'title', 'difficulty']
+          },
+          {
+            model: SubmissionDiscussion,
+            as: 'submission_discussions',
+            attributes: ['title', 'content', 'created_at', 'updated_at']
           }
         ],
         attributes: { 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Code, Trophy, UserCircle, Database, Users, Settings, LogOut } from 'lucide-react';
+import { Code, Trophy, UserCircle, Database, Users, Settings, LogOut, BookOpen } from 'lucide-react';
 import { logout, toggleUserRole } from '../redux/slices/authSlice';
 
 const Sidebar = () => {
@@ -13,6 +13,7 @@ const Sidebar = () => {
   const commonItems = [
     { icon: <Code className="h-5 w-5" />, label: 'Problems', path: '/problems' },
     { icon: <Trophy className="h-5 w-5" />, label: 'Competitions', path: '/competitions' },
+    { icon: <BookOpen className='h-5 w-5'/>, label: 'Discussions', path: '/discussions'}
   ];
   
   const roleSpecificItems = {

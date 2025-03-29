@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const User = require('./User');
 const Submission = require('./Submission');
+const DiscussionReply = require('./DiscussionReply');
 
 const SubmissionDiscussion = sequelize.define('SubmissionDiscussion', {
   id: {
@@ -68,6 +69,18 @@ SubmissionDiscussion.belongsTo(User, {
 SubmissionDiscussion.belongsTo(Submission, {
   foreignKey: 'submission_id',
   as: 'submission'
+});
+
+//Defined here because SubmissionDiscussion is defined later on the database -FX
+Submission.hasOne(SubmissionDiscussion, {
+  foreignKey: 'submission_id',
+  as: 'submission_discussions'  // Use plural for hasMany relationships
+}); 
+
+// Association with SubmissionDiscussion model
+DiscussionReply.belongsTo(SubmissionDiscussion, {
+  foreignKey: 'discussion_id',
+  as: 'discussion'
 });
 
 module.exports = SubmissionDiscussion;
