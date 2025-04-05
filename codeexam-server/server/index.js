@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
 const problemRoutes = require('./routes/problem');
 const competitionRoutes = require('./routes/competition');
+const frontendProblemRoutes = require('./routes/frontendProblem');
 const discussionRoutes = require('./routes/discussion');
 const submissionRoutes = require('./routes/submission');
 
@@ -26,6 +27,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/competitions', competitionRoutes);
 app.use('/api/discussions', discussionRoutes);
+app.use('/api/frontend-problems', frontendProblemRoutes);
 app.use('/api/submissions', submissionRoutes);
 
 // Error Handler

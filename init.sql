@@ -31,6 +31,46 @@ CREATE TABLE problems (
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
+CREATE TABLE frontend_problems (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    difficulty VARCHAR(20) NOT NULL CHECK (difficulty IN ('Easy', 'Medium', 'Hard')),
+    points INT NOT NULL,
+    requirements TEXT,
+    starter_code TEXT,
+    expected_output_image VARCHAR(255),
+    solution_code TEXT,
+    evaluation_criteria JSON,
+    time_limit_minutes INT NOT NULL DEFAULT 60,
+    tags JSON,
+    resources JSON,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+CREATE TABLE frontend_submissions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    problem_id INT NOT NULL,
+    html_code TEXT,
+    css_code TEXT,
+    js_code TEXT,
+    screenshot_url VARCHAR(255),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'submitted', 'graded')),
+    score INT DEFAULT 0,
+    feedback TEXT,
+    judge_id INT,
+    judged_at DATETIME,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (problem_id) REFERENCES frontend_problems(id) ON DELETE CASCADE,
+    FOREIGN KEY (judge_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
 CREATE TABLE competitions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,

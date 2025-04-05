@@ -1,6 +1,7 @@
 const axios = require('axios');
 const dotenv = require('dotenv');
 const Submission = require('../models/Submission');
+const Problem = require('../models/Problem');
 
 dotenv.config();
 
@@ -118,10 +119,25 @@ async function updateSubmissionError(submissionId, errorMessage) {
 // Process Judge0 results and update submission
 async function processResults(submissionId, results) {
     try {
-        // Calculate score based on test case results
+        // Get the submission to find the problem_id
+        const submission = await Submission.findByPk(submissionId);
+        if (!submission) {
+            throw new Error(`Submission ${submissionId} not found`);
+        }
+
+        // Get the problem to access its points value
+        const problem = await Problem.findByPk(submission.problem_id);
+        if (!problem) {
+            throw new Error(`Problem ${submission.problem_id} not found`);
+        }
+
+        // Calculate score based on test case results and problem points
         const totalTests = results.length;
         const passedTests = results.filter(result => result.status.id === 3).length; // 3 = Accepted
-        const score = Math.round((passedTests / totalTests) * 100);
+        const passedPercentage = passedTests / totalTests;
+        
+        // Calculate score as percentage of problem points
+        const score = Math.round(passedPercentage * problem.points);
 
         // Calculate average runtime and memory
         const runtimes = results.map(r => parseFloat(r.time) || 0);
@@ -135,6 +151,7 @@ async function processResults(submissionId, results) {
         // Set status to "accepted" or "wrong_answer" based on test results
         const status = allPassed ? 'accepted' : 'wrong_answer';
         console.log({status})
+        
         // Format test results for storage
         const testResults = results.map((result, index) => ({
             passed: result.status.id === 3,
@@ -159,7 +176,7 @@ async function processResults(submissionId, results) {
             { where: { id: submissionId } }
         );
 
-        console.log(`[Judge0] Processed results for submission ${submissionId}: status=${status}, score=${score}`);
+        console.log(`[Judge0] Processed results for submission ${submissionId}: status=${status}, score=${score}/${problem.points} (${Math.round(passedPercentage * 100)}% of tests passed)`);
     } catch (error) {
         console.error(`[Judge0] Error processing results for submission ${submissionId}:`, error);
         await updateSubmissionError(submissionId, 'Error processing judge results');
