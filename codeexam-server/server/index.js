@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const problemRoutes = require('./routes/problem');
 const competitionRoutes = require('./routes/competition');
 const frontendProblemRoutes = require('./routes/frontendProblem');
+const frontendSubmissionRoutes = require('./routes/frontendSubmission');
 const discussionRoutes = require('./routes/discussion');
 const submissionRoutes = require('./routes/submission');
 
@@ -28,6 +29,7 @@ app.use('/api/problems', problemRoutes);
 app.use('/api/competitions', competitionRoutes);
 app.use('/api/discussions', discussionRoutes);
 app.use('/api/frontend-problems', frontendProblemRoutes);
+app.use('/api/frontend-submissions', frontendSubmissionRoutes);
 app.use('/api/submissions', submissionRoutes);
 
 // Error Handler
