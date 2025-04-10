@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  UserCircle, Code, Trophy, Users, 
-  Filter, Search, ThumbsUp, MessageSquare, 
-  ChevronUp, ChevronDown, BookOpen, 
-  LogOut, CheckCircle, XCircle 
+  ThumbsUp, MessageSquare, 
+  ChevronUp, ChevronDown, 
+  CheckCircle, XCircle, 
+  Search
 } from 'lucide-react';
-import axios from 'axios';
-import API from '../components/helpers/API'
+import { useSelector } from 'react-redux';
+import Sidebar from '../components/Sidebar';
+import API from '../components/helpers/API';
 
 const SubmissionsForumPage = () => {
   // State Management
@@ -14,15 +15,23 @@ const SubmissionsForumPage = () => {
   const [comments, setComments] = useState({});
   const [expandedSubmission, setExpandedSubmission] = useState(null);
   const [expandedComments, setExpandedComments] = useState({});
-  const [userRole, setUserRole] = useState('competitor');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Get user role from Redux store instead of local state
+  const { userRole } = useSelector(state => state.auth);
   
   // Filtering and Sorting States
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('popular');
+
+  // Toggle sidebar for mobile
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   // Fetch Submissions
   useEffect(() => {
@@ -203,65 +212,6 @@ const SubmissionsForumPage = () => {
     );
   };
 
-  // Sidebar Rendering
-  const renderSidebar = () => {
-    const commonItems = [
-      { icon: <Code className="h-5 w-5" />, label: 'Problems' },
-      { icon: <MessageSquare className="h-5 w-5" />, label: 'Discussions' },
-      { icon: <Trophy className="h-5 w-5" />, label: 'Leaderboard' },
-    ];
-    
-    const roleSpecificItems = {
-      competitor: [
-        { icon: <UserCircle className="h-5 w-5" />, label: 'My Profile' },
-        { icon: <BookOpen className="h-5 w-5" />, label: 'Learning Resources' },
-      ],
-      admin: [
-        { icon: <Users className="h-5 w-5" />, label: 'Manage Users' },
-        { icon: <Filter className="h-5 w-5" />, label: 'All Submissions' },
-      ]
-    };
-    
-    const items = [...commonItems, ...roleSpecificItems[userRole]];
-    
-    return (
-      <div className="bg-gray-800 text-white w-64 h-screen fixed left-0 top-0">
-        <div className="p-4 border-b border-gray-700">
-          <h1 className="text-xl font-bold">CodeExam</h1>
-          <div className="text-sm text-gray-400 mt-1">
-            Logged in as <span className="font-medium text-gray-200 capitalize">{userRole}</span>
-          </div>
-        </div>
-        <nav className="mt-4">
-          <ul>
-            {items.map((item, index) => (
-              <li key={index}>
-                <a href="#" className="flex items-center px-4 py-3 hover:bg-gray-700">
-                  {item.icon}
-                  <span className="ml-3">{item.label}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="absolute bottom-4 left-0 right-0 px-4">
-          <button 
-            onClick={() => setUserRole(userRole === 'competitor' ? 'admin' : 'competitor')} 
-            className="w-full bg-gray-700 text-white py-2 px-4 rounded hover:bg-gray-600 text-sm"
-          >
-            Switch Role (Demo)
-          </button>
-          <button 
-            className="w-full mt-2 bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 text-sm flex items-center justify-center"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </button>
-        </div>
-      </div>
-    );
-  };
-
   // Submissions Rendering
   const renderSubmissions = () => {
     if (isLoading) {
@@ -398,9 +348,9 @@ const SubmissionsForumPage = () => {
   // Main Component Render
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {renderSidebar()}
+      <Sidebar sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       
-      <div className="ml-64 flex-1 p-6">
+      <div className="ml-0 md:ml-64 flex-1 p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Submission Discussions</h1>
           <p className="text-gray-600 mt-1">
@@ -417,9 +367,11 @@ const SubmissionsForumPage = () => {
                 placeholder="Search submissions..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full p-2 pl-10 border border-gray-300 rounded"
+                className="w-full p-2 pl-10 border border-gray-300 rounded-lg"
               />
-              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
             </div>
           </div>
           
@@ -427,44 +379,60 @@ const SubmissionsForumPage = () => {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-gray-300 rounded-lg"
             >
-              <option value="all">All Statuses</option>
-              <option value="accepted">Accepted</option>
-              <option value="rejected">Rejected</option>
+              <option value="all">All Submissions</option>
+              <option value="accepted">Accepted Only</option>
+              <option value="my">My Submissions</option>
             </select>
             
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="p-2 border border-gray-300 rounded"
+              className="p-2 border border-gray-300 rounded-lg"
             >
-              <option value="newest">Newest</option>
-              <option value="most-liked">Most Liked</option>
-              <option value="most-discussed">Most Discussed</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="most_liked">Most Liked</option>
+              <option value="most_discussed">Most Discussed</option>
             </select>
           </div>
         </div>
         
         {/* Tabs */}
-        <div className="mb-6 border-b">
-          <div className="flex space-x-4">
-            {['popular', 'recent', 'my-submissions'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-2 px-4 border-b-2 ${
-                  activeTab === tab 
-                    ? 'border-blue-500 text-blue-600' 
-                    : 'border-transparent hover:text-blue-500'
-                }`}
-              >
-                {tab.replace('-', ' ').split(' ').map(word => 
-                  word.charAt(0).toUpperCase() + word.slice(1)
-                ).join(' ')}
-              </button>
-            ))}
-          </div>
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('popular')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'popular'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Popular
+            </button>
+            <button
+              onClick={() => setActiveTab('recent')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'recent'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Recent
+            </button>
+            <button
+              onClick={() => setActiveTab('trending')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'trending'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Trending
+            </button>
+          </nav>
         </div>
         
         {/* Submissions List */}

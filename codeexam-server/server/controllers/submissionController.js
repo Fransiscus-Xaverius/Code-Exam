@@ -2,7 +2,7 @@ const Submission = require('../models/Submission');
 const SubmissionDiscussion = require('../models/SubmissionDiscussion')
 const Problem = require('../models/Problem');
 const User = require('../models/User');
-const submitToJudge0 = require('../job/judge0');
+const { submitToJudge0 } = require('../job/judge0');
 
 // @desc    Submit a solution to a problem
 // @route   POST /api/submissions
@@ -11,7 +11,7 @@ exports.createSubmission = async (req, res, next) => {
   try {
     console.log('Request body:', req.body);
     const { problem_id, competition_id, code, language } = req.body;
-    
+
     // Validate required fields
     if (!problem_id || !code || !language) {
       console.log('Missing required fields');
@@ -20,7 +20,7 @@ exports.createSubmission = async (req, res, next) => {
         message: 'Please provide problem_id, code, and language'
       });
     }
-    
+
     // Check if problem exists
     console.log('Finding problem with ID:', problem_id);
     const problem = await Problem.findByPk(problem_id);
@@ -31,7 +31,7 @@ exports.createSubmission = async (req, res, next) => {
         message: 'Problem not found'
       });
     }
-    
+
     // Create submission
     console.log('Creating submission for user:', req.user.id);
     const submission = await Submission.create({
@@ -43,9 +43,9 @@ exports.createSubmission = async (req, res, next) => {
       status: 'pending',
       submitted_at: new Date()
     });
-    
+
     console.log('Submission created:', submission.id);
-    
+
     // use to debug
     // const submission = await Submission.create({
     //     user_id: req.user.id,
@@ -71,7 +71,7 @@ exports.createSubmission = async (req, res, next) => {
       });
     }
     submitToJudge0(submission.id, code, language, problem.hidden_test_cases);
-    
+
     console.log('Submission process completed successfully');
     res.status(201).json({
       success: true,
@@ -83,7 +83,7 @@ exports.createSubmission = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Create submission error:', error);
-    
+
     // Handle validation errors
     if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
       const messages = error.errors.map(e => e.message);
@@ -93,7 +93,7 @@ exports.createSubmission = async (req, res, next) => {
         message: messages.join(', ')
       });
     }
-    
+
     next(error);
   }
 };
@@ -102,186 +102,186 @@ exports.createSubmission = async (req, res, next) => {
 // @route GET /api/public/submissions
 // @access Public (no authentication required)
 exports.getPublicSubmissions = async (req, res, next) => {
-    try {
-      // Add pagination
-      const page = parseInt(req.query.page, 10) || 1;
-      const limit = parseInt(req.query.limit, 10) || 10;
-      const startIndex = (page - 1) * limit;
-      
-      // Add filtering but only for published submissions
-      const filter = {
-        is_published: 1,
-        // status: 'accepted' // Only show accepted submissions
-      };
-      
-      // Additional filters
-      if (req.query.problem_id) {
-        filter.problem_id = req.query.problem_id;
-      }
-      
-      if (req.query.language) {
-        filter.language = req.query.language;
-      }
-      
-      if (req.query.user_id) {
-        filter.user_id = req.query.user_id;
-      }
-      
-      // Get submissions with count
-      const { count, rows: submissions, submissionDiscussions } = await Submission.findAndCountAll({
-        where: filter,
-        limit,
-        offset: startIndex,
-        order: [['submitted_at', 'DESC']],
-        include: [
-          {
-            model: User,
-            as: 'user',
-            attributes: ['id', 'username']
-          },
-          {
-            model: Problem,
-            as: 'problem',
-            attributes: ['id', 'title', 'difficulty']
-          },
-          {
-            model: SubmissionDiscussion,
-            as: 'submission_discussions',
-            attributes: ['title', 'content', 'created_at', 'updated_at']
-          }
-        ],
-        attributes: { 
-          exclude: ['error_message'] // Don't send error messages
-        }
-      });
-      
-      // Pagination result
-      const pagination = {};
-      if (startIndex + limit < count) {
-        pagination.next = {
-          page: page + 1,
-          limit
-        };
-      }
-      
-      if (startIndex > 0) {
-        pagination.prev = {
-          page: page - 1,
-          limit
-        };
-      }
-      
-      res.status(200).json({
-        success: true,
-        count,
-        pagination,
-        submissions
-      });
-    } catch (error) {
-      next(error);
+  try {
+    // Add pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const startIndex = (page - 1) * limit;
+
+    // Add filtering but only for published submissions
+    const filter = {
+      is_published: 1,
+      // status: 'accepted' // Only show accepted submissions
+    };
+
+    // Additional filters
+    if (req.query.problem_id) {
+      filter.problem_id = req.query.problem_id;
     }
+
+    if (req.query.language) {
+      filter.language = req.query.language;
+    }
+
+    if (req.query.user_id) {
+      filter.user_id = req.query.user_id;
+    }
+
+    // Get submissions with count
+    const { count, rows: submissions, submissionDiscussions } = await Submission.findAndCountAll({
+      where: filter,
+      limit,
+      offset: startIndex,
+      order: [['submitted_at', 'DESC']],
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username']
+        },
+        {
+          model: Problem,
+          as: 'problem',
+          attributes: ['id', 'title', 'difficulty']
+        },
+        {
+          model: SubmissionDiscussion,
+          as: 'submission_discussions',
+          attributes: ['title', 'content', 'created_at', 'updated_at']
+        }
+      ],
+      attributes: {
+        exclude: ['error_message'] // Don't send error messages
+      }
+    });
+
+    // Pagination result
+    const pagination = {};
+    if (startIndex + limit < count) {
+      pagination.next = {
+        page: page + 1,
+        limit
+      };
+    }
+
+    if (startIndex > 0) {
+      pagination.prev = {
+        page: page - 1,
+        limit
+      };
+    }
+
+    res.status(200).json({
+      success: true,
+      count,
+      pagination,
+      submissions
+    });
+  } catch (error) {
+    next(error);
+  }
 };
-  
+
 // @desc Get public submission details
 // @route GET /api/public/submissions/:id
 // @access Public (no authentication required)
 exports.getPublicSubmission = async (req, res, next) => {
-    try {
-      const submission = await Submission.findByPk(req.params.id, {
-        include: [
-          {
-            model: User,
-            as: 'user',
-            attributes: ['id', 'username']
-          },
-          {
-            model: Problem,
-            as: 'problem',
-            attributes: ['id', 'title', 'difficulty', 'points']
-          }
-        ]
-      });
-      
-      if (!submission) {
-        return res.status(404).json({
-          success: false,
-          message: 'Submission not found'
-        });
-      }
-      
-      // Check if submission is published
-      if (!submission.is_published || submission.status !== 'accepted') {
-        return res.status(403).json({
-          success: false,
-          message: 'This submission is not publicly available'
-        });
-      }
-      
-      // Return submission details
-      res.status(200).json({
-        success: true,
-        submission: {
-          id: submission.id,
-          user: submission.user,
-          problem: submission.problem,
-          language: submission.language,
-          code: submission.code, // Include the code for learning purposes
-          score: submission.score,
-          runtime_ms: submission.runtime_ms,
-          memory_kb: submission.memory_kb,
-          submitted_at: submission.submitted_at
+  try {
+    const submission = await Submission.findByPk(req.params.id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username']
+        },
+        {
+          model: Problem,
+          as: 'problem',
+          attributes: ['id', 'title', 'difficulty', 'points']
         }
+      ]
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
       });
-    } catch (error) {
-      next(error);
     }
+
+    // Check if submission is published
+    if (!submission.is_published || submission.status !== 'accepted') {
+      return res.status(403).json({
+        success: false,
+        message: 'This submission is not publicly available'
+      });
+    }
+
+    // Return submission details
+    res.status(200).json({
+      success: true,
+      submission: {
+        id: submission.id,
+        user: submission.user,
+        problem: submission.problem,
+        language: submission.language,
+        code: submission.code, // Include the code for learning purposes
+        score: submission.score,
+        runtime_ms: submission.runtime_ms,
+        memory_kb: submission.memory_kb,
+        submitted_at: submission.submitted_at
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
 };
-  
+
 
 // @desc Publish a submission (make it visible to others)
 // @route PUT /api/submissions/:id/publish
 // @access Private (Owner only)
 exports.publishSubmission = async (req, res, next) => {
-    try {
-      const submission = await Submission.findByPk(req.params.id);
-      
-      if (!submission) {
-        return res.status(404).json({
-          success: false,
-          message: 'Submission not found'
-        });
-      }
-      
-      // Check authorization
-      if (submission.user_id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to publish this submission'
-        });
-      }
-      
-    //   Only allow publishing of accepted submissions
-      if (submission.status !== 'accepted') {
-        return res.status(400).json({
-          success: false,
-          message: 'Only accepted submissions can be published'
-        });
-      }
-      
-      submission.is_published = true;
-      await submission.save();
+  try {
+    const submission = await Submission.findByPk(req.params.id);
 
-      
-      
-      res.status(200).json({
-        success: true,
-        message: 'Submission published',
-        submission
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
       });
-    } catch (error) {
-      next(error);
     }
-  };
+
+    // Check authorization
+    if (submission.user_id !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to publish this submission'
+      });
+    }
+
+    //   Only allow publishing of accepted submissions
+    if (submission.status !== 'accepted') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only accepted submissions can be published'
+      });
+    }
+
+    submission.is_published = true;
+    await submission.save();
+
+
+
+    res.status(200).json({
+      success: true,
+      message: 'Submission published',
+      submission
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // @desc    Get all submissions (with filtering)
 // @route   GET /api/submissions
@@ -292,10 +292,10 @@ exports.getSubmissions = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const startIndex = (page - 1) * limit;
-    
+
     // Add filtering
     const filter = {};
-    
+
     // If user is not admin or judge, they can only see their own submissions
     if (req.user.role !== 'admin' && req.user.role !== 'judge') {
       filter.user_id = req.user.id;
@@ -305,24 +305,24 @@ exports.getSubmissions = async (req, res, next) => {
         filter.user_id = req.query.user_id;
       }
     }
-    
+
     // Additional filters
     if (req.query.problem_id) {
       filter.problem_id = req.query.problem_id;
     }
-    
+
     if (req.query.competition_id) {
       filter.competition_id = req.query.competition_id;
     }
-    
+
     if (req.query.status) {
       filter.status = req.query.status;
     }
-    
+
     if (req.query.language) {
       filter.language = req.query.language;
     }
-    
+
     // Get submissions with count
     const { count, rows: submissions } = await Submission.findAndCountAll({
       where: filter,
@@ -349,24 +349,24 @@ exports.getSubmissions = async (req, res, next) => {
       ],
       attributes: { exclude: ['code'] } // Don't send code in the list view
     });
-    
+
     // Pagination result
     const pagination = {};
-    
+
     if (startIndex + limit < count) {
       pagination.next = {
         page: page + 1,
         limit
       };
     }
-    
+
     if (startIndex > 0) {
       pagination.prev = {
         page: page - 1,
         limit
       };
     }
-    
+
     res.status(200).json({
       success: true,
       count,
@@ -403,18 +403,18 @@ exports.getSubmission = async (req, res, next) => {
         }
       ]
     });
-    
+
     if (!submission) {
       return res.status(404).json({
         success: false,
         message: 'Submission not found'
       });
     }
-    
+
     // Check authorization
     if (
-      submission.user_id !== req.user.id && 
-      req.user.role !== 'admin' && 
+      submission.user_id !== req.user.id &&
+      req.user.role !== 'admin' &&
       req.user.role !== 'judge' &&
       !submission.is_published
     ) {
@@ -423,7 +423,7 @@ exports.getSubmission = async (req, res, next) => {
         message: 'Not authorized to view this submission'
       });
     }
-    
+
     res.status(200).json({
       success: true,
       submission
@@ -438,15 +438,15 @@ exports.getSubmission = async (req, res, next) => {
 // @access  Private (Admin/Judge only)
 exports.judgeSubmission = async (req, res, next) => {
   try {
-    const { 
-      status, 
-      execution_time_ms, 
-      memory_used_kb, 
-      score, 
-      test_results, 
-      judge_comment 
+    const {
+      status,
+      execution_time_ms,
+      memory_used_kb,
+      score,
+      test_results,
+      judge_comment
     } = req.body;
-    
+
     // Validate status
     if (!status) {
       return res.status(400).json({
@@ -454,7 +454,7 @@ exports.judgeSubmission = async (req, res, next) => {
         message: 'Please provide status'
       });
     }
-    
+
     // Check if status is valid
     const validStatuses = ['accepted', 'wrong_answer', 'time_limit_exceeded', 'memory_limit_exceeded', 'compilation_error', 'runtime_error'];
     if (!validStatuses.includes(status)) {
@@ -463,17 +463,17 @@ exports.judgeSubmission = async (req, res, next) => {
         message: `Status must be one of: ${validStatuses.join(', ')}`
       });
     }
-    
+
     // Find submission
     let submission = await Submission.findByPk(req.params.id);
-    
+
     if (!submission) {
       return res.status(404).json({
         success: false,
         message: 'Submission not found'
       });
     }
-    
+
     // Check authorization
     if (req.user.role !== 'admin' && req.user.role !== 'judge') {
       return res.status(403).json({
@@ -481,7 +481,7 @@ exports.judgeSubmission = async (req, res, next) => {
         message: 'Not authorized to judge submissions'
       });
     }
-    
+
     // Update submission
     await submission.update({
       status,
@@ -493,7 +493,7 @@ exports.judgeSubmission = async (req, res, next) => {
       judge_id: req.user.id,
       judged_at: new Date()
     });
-    
+
     // Get updated submission with associations
     submission = await Submission.findByPk(req.params.id, {
       include: [
@@ -514,14 +514,14 @@ exports.judgeSubmission = async (req, res, next) => {
         }
       ]
     });
-    
+
     res.status(200).json({
       success: true,
       submission
     });
   } catch (error) {
     console.error('Judge submission error:', error);
-    
+
     if (error.name === 'SequelizeValidationError') {
       const messages = error.errors.map(e => e.message);
       return res.status(400).json({
@@ -529,7 +529,7 @@ exports.judgeSubmission = async (req, res, next) => {
         message: messages.join(', ')
       });
     }
-    
+
     next(error);
   }
 };
@@ -540,14 +540,14 @@ exports.judgeSubmission = async (req, res, next) => {
 exports.deleteSubmission = async (req, res, next) => {
   try {
     const submission = await Submission.findByPk(req.params.id);
-    
+
     if (!submission) {
       return res.status(404).json({
         success: false,
         message: 'Submission not found'
       });
     }
-    
+
     // Check authorization
     if (submission.user_id !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
@@ -555,9 +555,9 @@ exports.deleteSubmission = async (req, res, next) => {
         message: 'Not authorized to delete this submission'
       });
     }
-    
+
     await submission.destroy();
-    
+
     res.status(200).json({
       success: true,
       message: 'Submission deleted successfully'
@@ -573,7 +573,7 @@ exports.deleteSubmission = async (req, res, next) => {
 exports.getSubmissionStats = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    
+
     // Get submission counts by status
     const statusCounts = await Submission.findAll({
       attributes: [
@@ -583,7 +583,7 @@ exports.getSubmissionStats = async (req, res, next) => {
       where: { user_id: userId },
       group: ['status']
     });
-    
+
     // Get submission counts by problem
     const problemCounts = await Submission.findAll({
       attributes: [
@@ -600,7 +600,7 @@ exports.getSubmissionStats = async (req, res, next) => {
         }
       ]
     });
-    
+
     // Get submission counts by language
     const languageCounts = await Submission.findAll({
       attributes: [
@@ -610,7 +610,7 @@ exports.getSubmissionStats = async (req, res, next) => {
       where: { user_id: userId },
       group: ['language']
     });
-    
+
     // Get recent submissions
     const recentSubmissions = await Submission.findAll({
       where: { user_id: userId },
@@ -625,7 +625,7 @@ exports.getSubmissionStats = async (req, res, next) => {
       ],
       attributes: ['id', 'status', 'score', 'submitted_at']
     });
-    
+
     res.status(200).json({
       success: true,
       stats: {

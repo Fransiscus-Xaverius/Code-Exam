@@ -16,7 +16,7 @@ async function submitToJudge0(submissionId, sourceCode, languageId, testCases) {
             stdin: testCase.input,
             expected_output: testCase.output
         }));
-        console.log("SUBMISSIONS OBJECT", { submissions,testCases })
+        console.log("SUBMISSIONS OBJECT", { submissions, testCases })
         // Submit batch request
         const createResponse = await axios.post(`${process.env.JUDGE0_API_URL}/submissions/batch`, {
             submissions
@@ -135,7 +135,7 @@ async function processResults(submissionId, results) {
         const totalTests = results.length;
         const passedTests = results.filter(result => result.status.id === 3).length; // 3 = Accepted
         const passedPercentage = passedTests / totalTests;
-        
+
         // Calculate score as percentage of problem points
         const score = Math.round(passedPercentage * problem.points);
 
@@ -147,11 +147,11 @@ async function processResults(submissionId, results) {
 
         // Determine overall status
         const allPassed = passedTests === totalTests;
-        
+
         // Set status to "accepted" or "wrong_answer" based on test results
         const status = allPassed ? 'accepted' : 'wrong_answer';
-        console.log({status})
-        
+        console.log({ status })
+
         // Format test results for storage
         const testResults = results.map((result, index) => ({
             passed: result.status.id === 3,
@@ -183,4 +183,4 @@ async function processResults(submissionId, results) {
     }
 }
 
-module.exports = submitToJudge0;
+module.exports = { submitToJudge0 };
