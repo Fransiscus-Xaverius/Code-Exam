@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+// Import the new controller function at the top with the others
 const {
   createCompetition,
   getCompetitions,
@@ -13,7 +14,9 @@ const {
   getCompetitionProblems,
   addProblemToCompetition,
   removeProblemFromCompetition,
-  updateProblemOrder
+  updateProblemOrder,
+  getCompetitionWorkspace,
+  getSubmissionStatus  // Add this import
 } = require('../controllers/competitionController');
 
 // @route   POST /api/competitions
@@ -75,5 +78,15 @@ router.delete('/:id/problems/:problemId', protect(['admin']), removeProblemFromC
 // @desc    Update problem order in a competition
 // @access  Private (Admin only)
 router.put('/:id/problems/:problemId', protect(['admin']), updateProblemOrder);
+
+// @route   GET /api/competitions/:id/workspace
+// @desc    Get competition workspace data
+// @access  Private
+router.get('/:id/workspace', protect(), getCompetitionWorkspace);
+
+// @route   GET /api/competitions/:id/submission-status
+// @desc    Get user's submission status for competition problems
+// @access  Private
+router.get('/:id/submission-status', protect(), getSubmissionStatus);
 
 module.exports = router;

@@ -15,6 +15,7 @@ import RegisterPage from './pages/RegisterPage';
 import CompetitionFormPage from './pages/competition/CompetitionFormPage';
 import SubmissionsForumPage from './pages/SubmissionForumPage';
 import FrontendSolvePage from './pages/FrontEndSolvePage';
+import CompetitionWorkspacePage from './pages/competition/CompetitionWorkspacePage';
 
 // Responsive wrapper component
 const ResponsiveWrapper = ({ children }) => {
@@ -63,88 +64,93 @@ const AdminRoute = ({ children }) => {
 const AppRoutes = () => {
   return (
     // <ResponsiveWrapper>
-      <Routes>
-        <Route path="/login" element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        } />
+    <Routes>
+      <Route path="/login" element={
+        <PublicRoute>
+          <LoginPage />
+        </PublicRoute>
+      } />
 
-        <Route path="/register" element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        } />
+      <Route path="/register" element={
+        <PublicRoute>
+          <RegisterPage />
+        </PublicRoute>
+      } />
 
-        <Route path="/404" element={
-          <PublicRoute>
-            <NotFoundPage />
-          </PublicRoute>
-        } />
+      <Route path="/404" element={
+        <PublicRoute>
+          <NotFoundPage />
+        </PublicRoute>
+      } />
 
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
 
-        <Route path='/solve/:id' element={
-          <ProtectedRoute>
-            <SolvePage />
-          </ProtectedRoute>
-        } />
+      <Route path='/solve/:id' element={
+        <ProtectedRoute>
+          <SolvePage />
+        </ProtectedRoute>
+      } />
 
-        <Route path='/solve-fe/:id' element={
-          <ProtectedRoute>
-            <FrontendSolvePage />
-          </ProtectedRoute>
-        } />
+      <Route path='/solve-fe/:id' element={
+        <ProtectedRoute>
+          <FrontendSolvePage />
+        </ProtectedRoute>
+      } />
 
-        <Route path='/problem/new' element={
-          <AdminRoute>
-            <ProblemFormPage />
-          </AdminRoute>
-        }/>
+      <Route path='/problem/new' element={
+        <AdminRoute>
+          <ProblemFormPage />
+        </AdminRoute>
+      } />
 
-        <Route path='/problem/edit/:id' element={
-          <AdminRoute>
-            <ProblemFormPage />
-          </AdminRoute>
-        }/>
+      <Route path='/problem/edit/:id' element={
+        <AdminRoute>
+          <ProblemFormPage />
+        </AdminRoute>
+      } />
 
-        <Route path="/competitions" element={
-          <ProtectedRoute>
-            <CompetitionListPage />
-          </ProtectedRoute>
-        } />
+      <Route path="/competitions" element={
+        <ProtectedRoute>
+          <CompetitionListPage />
+        </ProtectedRoute>
+      } />
 
-        <Route path="/competitions/:id" element={
-          <ProtectedRoute>
-            <CompetitionDetailsPage />
-          </ProtectedRoute>
-        } />
+      <Route path="/competitions/:id" element={
+        <ProtectedRoute>
+          <CompetitionDetailsPage />
+        </ProtectedRoute>
+      } />
 
-        <Route path="/competition/new" element={
-          <AdminRoute>
-            <CompetitionFormPage />
-          </AdminRoute>
-        } />
+      <Route path="/competitions/:id/workspace" element={
+        <ProtectedRoute>
+          <CompetitionWorkspacePage />
+        </ProtectedRoute>} />
 
-        <Route path="/competition/edit/:id" element={
-          <AdminRoute>
-            <CompetitionFormPage />
-          </AdminRoute>
-        } />
+      <Route path="/competition/new" element={
+        <AdminRoute>
+          <CompetitionFormPage />
+        </AdminRoute>
+      } />
 
-        <Route path="/discussions" element={
-          <ProtectedRoute>
-            <SubmissionsForumPage />
-          </ProtectedRoute>
-        } />
+      <Route path="/competition/edit/:id" element={
+        <AdminRoute>
+          <CompetitionFormPage />
+        </AdminRoute>
+      } />
 
-        <Route path="/" element={<Navigate to="/dashboard" />} />
-        <Route path="*" element={<Navigate to="/404" />} />
-      </Routes>
+      <Route path="/discussions" element={
+        <ProtectedRoute>
+          <SubmissionsForumPage />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="*" element={<Navigate to="/404" />} />
+    </Routes>
     // </ResponsiveWrapper>
   );
 };

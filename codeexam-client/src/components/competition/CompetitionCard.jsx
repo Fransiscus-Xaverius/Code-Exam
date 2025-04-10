@@ -101,15 +101,21 @@ const CompetitionCard = ({ competition, userRole, onView, onEdit }) => {
         let btnText = 'View Details';
         let btnVariant = 'secondary';
         let btnIcon = null;
+        let btnAction = onView; // Default action
 
-        if (userRole === 'competitor') {
+        if (userRole === 'competitor' || userRole === 'user') {
             if (status === 'upcoming') {
                 btnText = competition.isRegistered ? 'Registered' : 'Register';
                 btnVariant = competition.isRegistered ? 'success' : 'primary';
                 btnIcon = competition.isRegistered ? <CheckCircle size={16} className="mr-2" /> : null;
             } else if (status === 'active') {
-                btnText = 'Participate Now';
+                btnText = 'Enter Competition';
                 btnVariant = 'primary';
+                btnIcon = <Trophy size={16} className="mr-2" />;
+                // Keep the onView action which will be enhanced to handle competition entry
+            } else if (status === 'past') {
+                btnText = 'View Results';
+                btnVariant = 'secondary';
                 btnIcon = <Trophy size={16} className="mr-2" />;
             }
         } else if (userRole === 'judge') {
@@ -124,10 +130,10 @@ const CompetitionCard = ({ competition, userRole, onView, onEdit }) => {
 
         return (
             <Button
-                onClick={onView}
+                onClick={btnAction}
                 variant={btnVariant}
                 size="sm"
-                className={`text-sm px-4 py-2 ${status === 'active' ? 'animate-pulse-subtle' : ''}`}
+                className={`text-sm px-4 py-2 flex items-center justify-center ${status === 'active' ? 'animate-pulse-subtle' : ''}`}
             >
                 {btnIcon}
                 {btnText}

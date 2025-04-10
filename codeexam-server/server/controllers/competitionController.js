@@ -3,6 +3,7 @@ const CompetitionParticipant = require('../models/CompetitionParticipant');
 const User = require('../models/User');
 const Problem = require('../models/Problem');
 const CompetitionProblem = require('../models/CompetitionProblem');
+const Submission = require('../models/Submission');  // Add this import
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -702,6 +703,194 @@ exports.updateProblemOrder = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Update problem order error:', error);
+    next(error);
+  }
+};
+
+// @desc    Get competition workspace data
+// @route   GET /api/competitions/:id/workspace
+// @access  Private (Only registered participants, judges, and admins)
+exports.getCompetitionWorkspace = async (req, res, next) => {
+  try {
+    const competitionId = req.params.id;
+    const userId = req.user.id;
+
+    // Check if competition exists
+    const competition = await Competition.findByPk(competitionId, {
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'username', 'role']
+        }
+      ]
+    });
+
+    if (!competition) {
+      return res.status(404).json({
+        success: false,
+        message: 'Competition not found'
+      });
+    }
+
+    // Check if competition is active
+    const now = new Date();
+    const startTime = new Date(competition.start_time);
+    const endTime = new Date(competition.end_time);
+    const isActive = now >= startTime && now <= endTime;
+
+    // If not active, only allow admins and judges to access
+    if (!isActive && req.user.role !== 'admin' && req.user.role !== 'judge') {
+      return res.status(403).json({
+        success: false,
+        message: 'This competition is not currently active'
+      });
+    }
+
+    // If registration is required, check if user is registered
+    if (competition.registration_required) {
+      const isRegistered = await CompetitionParticipant.findOne({
+        where: {
+          competition_id: competitionId,
+          user_id: userId
+        }
+      });
+
+      // If not registered and not admin/judge, deny access
+      if (!isRegistered && req.user.role !== 'admin' && req.user.role !== 'judge') {
+        return res.status(403).json({
+          success: false,
+          message: 'You must be registered for this competition to access the workspace'
+        });
+      }
+    }
+
+    // Get competition problems
+    const problems = await Problem.findAll({
+      include: [
+        {
+          model: Competition,
+          where: { id: competitionId },
+          attributes: []
+        }
+      ],
+      attributes: { exclude: ['hidden_test_cases'] }, // Don't send hidden test cases
+      order: [
+        [sequelize.literal('`CompetitionProblem`.`order_index`'), 'ASC']
+      ]
+    });
+
+    // Get user's submissions for this competition if they exist
+    const submissions = await Submission.findAll({
+      where: {
+        user_id: userId,
+        competition_id: competitionId
+      },
+      include: [
+        {
+          model: Problem,
+          as: 'problem',
+          attributes: ['id', 'title']
+        }
+      ]
+    });
+
+    // Get participant stats if leaderboard is visible
+    let participants = [];
+    if (competition.leaderboard_visible || req.user.role === 'admin' || req.user.role === 'judge') {
+      participants = await User.findAll({
+        include: [
+          {
+            model: Competition,
+            where: { id: competitionId },
+            attributes: []
+          }
+        ],
+        attributes: ['id', 'username'],
+        through: { attributes: ['registered_at'] }
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        competition,
+        problems,
+        submissions,
+        participants,
+        isActive
+      }
+    });
+  } catch (error) {
+    console.error('Get competition workspace error:', error);
+    next(error);
+  }
+};
+
+// @desc    Get user's submission status for competition problems
+// @route   GET /api/competitions/:id/submission-status
+// @access  Private
+exports.getSubmissionStatus = async (req, res, next) => {
+  try {
+    const competitionId = req.params.id;
+    const userId = req.user.id;
+
+    // Check if competition exists
+    const competition = await Competition.findByPk(competitionId);
+    if (!competition) {
+      return res.status(404).json({
+        success: false,
+        message: 'Competition not found'
+      });
+    }
+
+    // Get all problems for this competition
+    const competitionProblems = await CompetitionProblem.findAll({
+      where: { competition_id: competitionId },
+      include: [{ model: Problem, attributes: ['id'] }]
+    });
+
+    // Get all problem IDs
+    const problemIds = competitionProblems.map(cp => cp.problem_id);
+
+    // Get user's submissions for these problems in this competition
+    const submissions = await Submission.findAll({
+      where: {
+        user_id: userId,
+        competition_id: competitionId,
+        problem_id: { [Op.in]: problemIds }
+      },
+      attributes: ['problem_id', 'status', 'score']
+    });
+
+    // Create a map of problem_id to submission status
+    const statusMap = {};
+    
+    // Initialize all problems as not attempted
+    problemIds.forEach(id => {
+      statusMap[id] = 'not_attempted';
+    });
+
+    // Update status based on submissions
+    submissions.forEach(submission => {
+      const problemId = submission.problem_id;
+      
+      // If any submission is successful, mark as solved
+      if (submission.status === 'success' || submission.status === 'accepted') {
+        statusMap[problemId] = 'solved';
+      } 
+      // Otherwise, if not already marked as solved, mark as attempted
+      else if (statusMap[problemId] !== 'solved') {
+        statusMap[problemId] = 'attempted';
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: statusMap
+    });
+  } catch (error) {
+    console.error('Get submission status error:', error);
     next(error);
   }
 };
