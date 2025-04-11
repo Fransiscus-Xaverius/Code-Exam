@@ -1,7 +1,9 @@
 const Submission = require('../models/Submission');
-const SubmissionDiscussion = require('../models/SubmissionDiscussion')
+const SubmissionDiscussion = require('../models/SubmissionDiscussion');
 const Problem = require('../models/Problem');
 const User = require('../models/User');
+const Competition = require('../models/Competition');
+const sequelize = require('../config/database');
 const { submitToJudge0 } = require('../job/judge0');
 
 // @desc    Submit a solution to a problem
@@ -83,6 +85,91 @@ exports.createSubmission = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Create submission error:', error);
+
+    // Handle validation errors
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      const messages = error.errors.map(e => e.message);
+      console.log('Validation error:', messages);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', ')
+      });
+    }
+
+    next(error);
+  }
+};
+
+// @desc    Submit a formal solution for evaluation
+// @route   POST /api/submissions
+// @access  Private
+exports.submit = async (req, res, next) => {
+  try {
+    console.log('Submit solution - Request body:', req.body);
+    const { problem_id, competition_id, code, language } = req.body;
+
+    // Validate required fields
+    if (!problem_id || !code || !language) {
+      console.log('Missing required fields');
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide problem_id, code, and language'
+      });
+    }
+
+    // Check if problem exists
+    console.log('Finding problem with ID:', problem_id);
+    const problem = await Problem.findByPk(problem_id);
+    if (!problem) {
+      console.log('Problem not found with ID:', problem_id);
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found'
+      });
+    }
+
+    // Create submission with formal status
+    console.log('Creating formal submission for user:', req.user.id);
+    const submission = await Submission.create({
+      user_id: req.user.id,
+      problem_id,
+      competition_id: competition_id || null,
+      code,
+      language,
+      status: 'pending',
+      submitted_at: new Date()
+    });
+
+    console.log('Formal submission created:', submission.id);
+
+    // Submit to judge system for evaluation
+    console.log('Submitting to Judge0 for formal evaluation:', submission.id);
+    // Ensure test cases are passed to the judge
+    if (!problem.hidden_test_cases || !Array.isArray(problem.hidden_test_cases) || problem.hidden_test_cases.length === 0) {
+      console.error(`Problem ${problem_id} has no valid hidden test cases. Cannot submit to judge.`);
+      // Update submission status to indicate an error related to problem setup
+      await submission.update({ status: 'runtime_error', judge_comment: 'Problem configuration error: No valid test cases found.' });
+      // Return an internal server error as this is a setup issue, not a user input issue
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error: Problem is missing test cases.'
+      });
+    }
+
+    // Submit to judge system
+    submitToJudge0(submission.id, code, language, problem.hidden_test_cases);
+
+    console.log('Formal submission process completed successfully');
+    res.status(201).json({
+      success: true,
+      submission: {
+        id: submission.id,
+        status: submission.status,
+        submitted_at: submission.submitted_at
+      }
+    });
+  } catch (error) {
+    console.error('Create formal submission error:', error);
 
     // Handle validation errors
     if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
@@ -636,6 +723,67 @@ exports.getSubmissionStats = async (req, res, next) => {
       }
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get competition submission
+// @route   GET /api/competitions/:competitionId/submissions/:id
+// @access  Private
+exports.getCompetitionSubmission = async (req, res, next) => {
+  try {
+    const { competitionId, id } = req.params;
+    const userId = req.user.id;
+
+    // Check if competition exists
+    const competition = await Competition.findByPk(competitionId);
+    if (!competition) {
+      return res.status(404).json({
+        success: false,
+        message: 'Competition not found'
+      });
+    }
+
+    // Check if submission exists and belongs to the user and the competition
+    const submission = await Submission.findOne({
+      where: {
+        id,
+        user_id: userId,
+        competition_id: competitionId
+      },
+      include: [
+        {
+          model: Problem,
+          as: 'problem',
+          attributes: ['id', 'title', 'problem_type']
+        }
+      ]
+    });
+
+    if (!submission) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found or does not belong to you in this competition'
+      });
+    }
+
+    // Return submission data
+    res.json({
+      success: true,
+      data: {
+        id: submission.id,
+        status: submission.status,
+        code: submission.code,
+        language: submission.language,
+        points: submission.points,
+        feedback: submission.feedback,
+        test_results: submission.test_results ? JSON.parse(submission.test_results) : null,
+        created_at: submission.created_at,
+        problem: submission.problem
+      }
+    });
+  } catch (error) {
+    console.error('Error getting competition submission:', error);
     next(error);
   }
 };

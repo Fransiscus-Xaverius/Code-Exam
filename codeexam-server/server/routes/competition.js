@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-// Import the new controller function at the top with the others
 const {
   createCompetition,
   getCompetitions,
@@ -16,7 +15,11 @@ const {
   removeProblemFromCompetition,
   updateProblemOrder,
   getCompetitionWorkspace,
-  getSubmissionStatus  // Add this import
+  getSubmissionStatus,
+  getCompetitionLeaderboard,
+  getCompetitionProblemDetails,
+  submitCompetitionSolution,
+  runCompetitionCode
 } = require('../controllers/competitionController');
 
 // @route   POST /api/competitions
@@ -88,5 +91,25 @@ router.get('/:id/workspace', protect(), getCompetitionWorkspace);
 // @desc    Get user's submission status for competition problems
 // @access  Private
 router.get('/:id/submission-status', protect(), getSubmissionStatus);
+
+// @route   GET /api/competitions/:id/leaderboard
+// @desc    Get competition leaderboard
+// @access  Private
+router.get('/:id/leaderboard', protect(), getCompetitionLeaderboard);
+
+// @route   GET /api/competitions/:id/problems/:problemId/details
+// @desc    Get specific problem details in a competition
+// @access  Private
+router.get('/:id/problems/:problemId/details', protect(), getCompetitionProblemDetails);
+
+// @route   POST /api/competitions/:id/problems/:problemId/submit
+// @desc    Submit solution for a competition problem
+// @access  Private
+router.post('/:id/problems/:problemId/submit', protect(), submitCompetitionSolution);
+
+// @route   POST /api/competitions/:id/problems/:problemId/run
+// @desc    Run code for a competition problem
+// @access  Private
+router.post('/:id/problems/:problemId/run', protect(), runCompetitionCode);
 
 module.exports = router;

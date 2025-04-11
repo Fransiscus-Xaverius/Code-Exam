@@ -148,6 +148,12 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
+      <Route path="/competitions/:competitionId/problems/:problemId/solve" element={
+        <ProtectedRoute>
+          <SolvePage />
+        </ProtectedRoute>
+      } />
+
       <Route path="/" element={<Navigate to="/dashboard" />} />
       <Route path="*" element={<Navigate to="/404" />} />
     </Routes>

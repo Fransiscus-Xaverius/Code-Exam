@@ -326,19 +326,19 @@ const SolvePage = () => {
 
       const token = localStorage.getItem('codeexam_token');
 
-      const response = await API.post('/api/submissions', {
+      const response = await API.post('/api/submissions/submit', {
         problem_id: id,
         code: code,
-        language: language
+        language: getLanguageId(language)  // Make sure to use getLanguageId here
       }, {
         headers: {
           Authorization: token ? `Bearer ${token}` : ''
         }
       });
 
-      setOutput(`Submission received and queued for evaluation. Submission ID: ${response.data.submission_id}`);
+      setOutput(`Submission received and queued for evaluation. Submission ID: ${response.data.submission?.id || 'Unknown'}`);
 
-      setSubmissionId(response.data.submission.id);
+      setSubmissionId(response.data.submission?.id);
       setSubmissionStatus('pending');
     } catch (error) {
       console.error('Error submitting solution:', error);

@@ -1,16 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 const { 
-  createSubmission, 
-  getSubmissions, 
   getSubmission, 
-  judgeSubmission, 
-  deleteSubmission, 
+  getSubmissions, 
+  judgeSubmission: reviewSubmission,
+  getPublicSubmissions,
+  getCompetitionSubmission,
   getSubmissionStats,
+  createSubmission,
+  publishSubmission,
+  judgeSubmission,
+  deleteSubmission,
   getPublicSubmission,
-  getPublicSubmissions, 
-  publishSubmission
+  submit
 } = require('../controllers/submissionController');
 
 // @route GET /api/submissions/stats
@@ -18,17 +21,22 @@ const {
 // @access Protected
 router.get('/stats', protect(), getSubmissionStats);
 
-// @route POST /api/submissions
-// @desc Create a new submission
+// @route POST /api/submissions/run-code
+// @desc Run code without formal submission
 // @access Protected
 router.post('/run-code', protect(), createSubmission);
+
+// @route POST /api/submissions/submit
+// @desc Create a full submission
+// @access Protected
+router.post('/submit', protect(), submit);
 
 // @route GET /api/public/submissions
 // @desc Get all submissions
 // @access Protected
 router.get('/public', protect(), getPublicSubmissions);
 
-router.get('/', protect(), getSubmissions);
+// router.get('/', protect(), getSubmissions);
 
 // @route GET /api/submissions/:id
 // @desc Get a specific submission
@@ -51,5 +59,27 @@ router.delete('/:id', protect(), deleteSubmission);
 router.put('/:id/judge', protect(['admin', 'judge']), judgeSubmission);
 
 router.put('/:id/publish', protect(), publishSubmission);
+
+// @access  Public
+// @route   GET /api/submissionsubmissions);
+// @desc    Get all submissions
+// @access  Private (Admin/Judge only)
+router.get('/', protect(['admin', 'judge']), getSubmissions);
+
+// @access  Private (Admin/Judge only)
+// @route   GET /api/submissions/public
+// @desc    Get public submissions (for forum)
+// @access  Public
+router.get('/public', getPublicSubmissions);
+
+// @route   PUT /api/submissions/:id/review
+// @desc    Review a submission (Judge only)
+// @access  Private (Admin/Judge only)
+router.put('/:id/review', protect(['admin', 'judge']), reviewSubmission);
+
+// @route   GET /api/competitions/:competitionId/submissions/:id
+// @desc    Get competition submission
+// @access  Private
+router.get('/competitions/:competitionId/submissions/:id', protect(), getCompetitionSubmission);
 
 module.exports = router;

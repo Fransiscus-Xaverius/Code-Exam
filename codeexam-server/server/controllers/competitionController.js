@@ -3,11 +3,9 @@ const CompetitionParticipant = require('../models/CompetitionParticipant');
 const User = require('../models/User');
 const Problem = require('../models/Problem');
 const CompetitionProblem = require('../models/CompetitionProblem');
-const Submission = require('../models/Submission');  // Add this import
+const Submission = require('../models/Submission');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
-
-
 
 // @desc    Create a new competition
 // @route   POST /api/competitions
@@ -709,22 +707,14 @@ exports.updateProblemOrder = async (req, res, next) => {
 
 // @desc    Get competition workspace data
 // @route   GET /api/competitions/:id/workspace
-// @access  Private (Only registered participants, judges, and admins)
+// @access  Private
 exports.getCompetitionWorkspace = async (req, res, next) => {
   try {
-    const competitionId = req.params.id;
+    const { id } = req.params;
     const userId = req.user.id;
 
-    // Check if competition exists
-    const competition = await Competition.findByPk(competitionId, {
-      include: [
-        {
-          model: User,
-          as: 'creator',
-          attributes: ['id', 'username', 'role']
-        }
-      ]
-    });
+    // Get competition details
+    const competition = await Competition.findByPk(id);
 
     if (!competition) {
       return res.status(404).json({
@@ -737,93 +727,122 @@ exports.getCompetitionWorkspace = async (req, res, next) => {
     const now = new Date();
     const startTime = new Date(competition.start_time);
     const endTime = new Date(competition.end_time);
-    const isActive = now >= startTime && now <= endTime;
 
-    // If not active, only allow admins and judges to access
-    if (!isActive && req.user.role !== 'admin' && req.user.role !== 'judge') {
+    if (now < startTime) {
       return res.status(403).json({
         success: false,
-        message: 'This competition is not currently active'
+        message: 'Competition has not started yet'
       });
     }
 
-    // If registration is required, check if user is registered
-    if (competition.registration_required) {
-      const isRegistered = await CompetitionParticipant.findOne({
-        where: {
-          competition_id: competitionId,
-          user_id: userId
-        }
+    if (now > endTime && !req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Competition has ended'
       });
-
-      // If not registered and not admin/judge, deny access
-      if (!isRegistered && req.user.role !== 'admin' && req.user.role !== 'judge') {
-        return res.status(403).json({
-          success: false,
-          message: 'You must be registered for this competition to access the workspace'
-        });
-      }
     }
 
-    // Get competition problems
-    const problems = await Problem.findAll({
-      include: [
-        {
-          model: Competition,
-          where: { id: competitionId },
-          attributes: []
-        }
-      ],
-      attributes: { exclude: ['hidden_test_cases'] }, // Don't send hidden test cases
-      order: [
-        [sequelize.literal('`CompetitionProblem`.`order_index`'), 'ASC']
-      ]
+    // Check if user is registered for competition
+    const participant = await CompetitionParticipant.findOne({
+      where: { competition_id: id, user_id: userId }
     });
 
-    // Get user's submissions for this competition if they exist
+    if (!participant && !req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not registered for this competition'
+      });
+    }
+
+    // Get competition problems - Remove problem_type from attributes
+    const problems = await CompetitionProblem.findAll({
+      where: { competition_id: id },
+      include: [
+        {
+          model: Problem,
+          attributes: ['id', 'title', 'description', 'difficulty', 'points']
+        }
+      ],
+      order: [['order_index', 'ASC']]
+    });
+
+    // Get user's points for this competition
+    const userPoints = await Submission.sum('score', {
+      where: {
+        user_id: userId,
+        competition_id: id,
+        status: 'accepted'
+      }
+    }) || 0;
+
+    // Get total possible points
+    const totalPoints = problems.reduce((total, problem) => {
+      return total + (problem.Problem ? problem.Problem.points : 0);
+    }, 0);
+
+    // Get user's submission status for each problem
+    const submissionStatuses = await exports.getUserSubmissionStatuses(userId, id);
+
+    // Return workspace data
+    res.json({
+      success: true,
+      data: {
+        competition: {
+          id: competition.id,
+          name: competition.name,
+          description: competition.description,
+          start_time: competition.start_time,
+          end_time: competition.end_time,
+          leaderboard_visible: competition.leaderboard_visible
+        },
+        problems: problems.map(p => ({
+          id: p.id,
+          problem_id: p.problem_id,
+          order_index: p.order_index,
+          title: p.Problem ? p.Problem.title : null,
+          difficulty: p.Problem ? p.Problem.difficulty : null,
+          points: p.Problem ? p.Problem.points : null,
+          status: submissionStatuses[p.problem_id] || null
+        })),
+        userProgress: {
+          points: userPoints,
+          totalPoints: totalPoints,
+          problemsSolved: Object.values(submissionStatuses).filter(s => s === 'solved').length,
+          totalProblems: problems.length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error getting competition workspace:', error);
+    next(error);
+  }
+};
+
+// Helper function to get user's submission statuses for competition problems
+exports.getUserSubmissionStatuses = async (userId, competitionId) => {
+  try {
     const submissions = await Submission.findAll({
       where: {
         user_id: userId,
         competition_id: competitionId
       },
-      include: [
-        {
-          model: Problem,
-          as: 'problem',
-          attributes: ['id', 'title']
-        }
-      ]
+      attributes: ['problem_id', 'status', 'created_at'],
+      order: [['created_at', 'DESC']]
     });
 
-    // Get participant stats if leaderboard is visible
-    let participants = [];
-    if (competition.leaderboard_visible || req.user.role === 'admin' || req.user.role === 'judge') {
-      participants = await User.findAll({
-        include: [
-          {
-            model: Competition,
-            where: { id: competitionId },
-            attributes: []
-          }
-        ],
-        attributes: ['id', 'username'],
-        through: { attributes: ['registered_at'] }
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: {
-        competition,
-        problems,
-        submissions,
-        participants,
-        isActive
+    // Group by problem_id and get latest submission status
+    const statusMap = {};
+    submissions.forEach(submission => {
+      // Only update if not already set - this gives us the most recent submission
+      if (!statusMap[submission.problem_id]) {
+        statusMap[submission.problem_id] = submission.status === 'accepted' ? 'solved' : 'attempted';
       }
     });
+
+    return statusMap;
   } catch (error) {
-    console.error('Get competition workspace error:', error);
-    next(error);
+    console.error('Error getting submission statuses:', error);
+    return {};
   }
 };
 
@@ -832,11 +851,31 @@ exports.getCompetitionWorkspace = async (req, res, next) => {
 // @access  Private
 exports.getSubmissionStatus = async (req, res, next) => {
   try {
-    const competitionId = req.params.id;
+    const { id } = req.params;
     const userId = req.user.id;
 
-    // Check if competition exists
-    const competition = await Competition.findByPk(competitionId);
+    const statusMap = await exports.getUserSubmissionStatuses(userId, id);
+    
+    res.json({
+      success: true,
+      data: statusMap
+    });
+  } catch (error) {
+    console.error('Error getting submission statuses:', error);
+    next(error);
+  }
+};
+
+// @desc    Get competition leaderboard
+// @route   GET /api/competitions/:id/leaderboard
+// @access  Private
+exports.getCompetitionLeaderboard = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check competition exists
+    const competition = await Competition.findByPk(id);
     if (!competition) {
       return res.status(404).json({
         success: false,
@@ -844,53 +883,377 @@ exports.getSubmissionStatus = async (req, res, next) => {
       });
     }
 
-    // Get all problems for this competition
-    const competitionProblems = await CompetitionProblem.findAll({
-      where: { competition_id: competitionId },
-      include: [{ model: Problem, attributes: ['id'] }]
+    // Check if leaderboard should be visible
+    if (!competition.leaderboard_visible && !req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Leaderboard is not visible for this competition'
+      });
+    }
+
+    // Get participants with their total points - using score instead of points
+    const leaderboard = await sequelize.query(`
+      SELECT 
+        cp.user_id,
+        u.username,
+        SUM(CASE WHEN s.status = 'accepted' THEN s.score ELSE 0 END) as total_points,
+        COUNT(DISTINCT CASE WHEN s.status = 'accepted' THEN s.problem_id END) as problems_solved,
+        MAX(s.created_at) as last_submission_time
+      FROM 
+        competition_participants cp
+        LEFT JOIN users u ON cp.user_id = u.id
+        LEFT JOIN submissions s ON cp.user_id = s.user_id AND s.competition_id = cp.competition_id
+      WHERE 
+        cp.competition_id = :competitionId
+      GROUP BY 
+        cp.user_id, u.username
+      ORDER BY 
+        total_points DESC,
+        problems_solved DESC,
+        last_submission_time ASC
+    `, {
+      replacements: { competitionId: id },
+      type: sequelize.QueryTypes.SELECT
     });
 
-    // Get all problem IDs
-    const problemIds = competitionProblems.map(cp => cp.problem_id);
+    // Add rank and flag current user
+    const rankedLeaderboard = leaderboard.map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+      isCurrentUser: entry.user_id === userId
+    }));
 
-    // Get user's submissions for these problems in this competition
-    const submissions = await Submission.findAll({
-      where: {
-        user_id: userId,
-        competition_id: competitionId,
-        problem_id: { [Op.in]: problemIds }
-      },
-      attributes: ['problem_id', 'status', 'score']
-    });
-
-    // Create a map of problem_id to submission status
-    const statusMap = {};
-    
-    // Initialize all problems as not attempted
-    problemIds.forEach(id => {
-      statusMap[id] = 'not_attempted';
-    });
-
-    // Update status based on submissions
-    submissions.forEach(submission => {
-      const problemId = submission.problem_id;
-      
-      // If any submission is successful, mark as solved
-      if (submission.status === 'success' || submission.status === 'accepted') {
-        statusMap[problemId] = 'solved';
-      } 
-      // Otherwise, if not already marked as solved, mark as attempted
-      else if (statusMap[problemId] !== 'solved') {
-        statusMap[problemId] = 'attempted';
-      }
-    });
-
-    res.status(200).json({
+    res.json({
       success: true,
-      data: statusMap
+      data: rankedLeaderboard
     });
   } catch (error) {
-    console.error('Get submission status error:', error);
+    console.error('Error getting competition leaderboard:', error);
     next(error);
   }
 };
+
+// @desc    Get specific problem details in a competition
+// @route   GET /api/competitions/:id/problems/:problemId/details
+// @access  Private
+exports.getCompetitionProblemDetails = async (req, res, next) => {
+  try {
+    const { id, problemId } = req.params;
+    const userId = req.user.id;
+
+    // Check if user is registered and competition is active
+    const competitionAccessCheck = await checkCompetitionAccess(id, userId, req.user.isAdmin);
+    if (!competitionAccessCheck.success) {
+      return res.status(403).json(competitionAccessCheck);
+    }
+
+    // Get competition problem - Remove problem_type from attributes
+    const competitionProblem = await CompetitionProblem.findOne({
+      where: { 
+        [Op.or]: [
+          { id: problemId },
+          { problem_id: problemId, competition_id: id }
+        ]
+      },
+      include: {
+        model: Problem,
+        attributes: [
+          'id', 'title', 'description', 'difficulty', 'points', 
+          'input_format', 'output_format', 'constraints',
+          'sample_input', 'sample_output', 'time_limit_ms',
+          'memory_limit_kb', 'starter_code'
+        ]
+      }
+    });
+
+    if (!competitionProblem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found in this competition'
+      });
+    }
+
+    // Get user's previous submissions for this problem
+    const userSubmissions = await Submission.findAll({
+      where: {
+        user_id: userId,
+        competition_id: id,
+        problem_id: competitionProblem.problem_id
+      },
+      order: [['created_at', 'DESC']],
+      limit: 5
+    });
+
+    res.json({
+      success: true,
+      data: {
+        problem: competitionProblem.Problem,
+        previousSubmissions: userSubmissions.map(s => ({
+          id: s.id,
+          status: s.status,
+          language: s.language,
+          code: s.code,
+          points: s.points,
+          created_at: s.created_at
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Error getting competition problem details:', error);
+    next(error);
+  }
+};
+
+// @desc    Submit solution for a competition problem
+// @route   POST /api/competitions/:id/problems/:problemId/submit
+// @access  Private
+exports.submitCompetitionSolution = async (req, res, next) => {
+  try {
+    const { id, problemId } = req.params;
+    const userId = req.user.id;
+    const { code, language } = req.body;
+
+    // Check competition access
+    const accessCheck = await checkCompetitionAccess(id, userId, req.user.isAdmin);
+    if (!accessCheck.success) {
+      return res.status(403).json(accessCheck);
+    }
+
+    // Get problem details
+    const competitionProblem = await CompetitionProblem.findOne({
+      where: { 
+        [Op.or]: [
+          { id: problemId },
+          { problem_id: problemId, competition_id: id }
+        ]
+      },
+      include: {
+        model: Problem,
+        attributes: ['id', 'points', 'test_cases']
+      }
+    });
+
+    if (!competitionProblem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found in this competition'
+      });
+    }
+
+    // Create submission - use score instead of points
+    const submission = await Submission.create({
+      user_id: userId,
+      problem_id: competitionProblem.problem_id,
+      competition_id: id,
+      code,
+      language,
+      status: 'pending',
+      score: 0 // Changed from points to score
+    });
+
+    // Process submission (assume all problems are coding problems)
+    try {
+      // Process test cases with Judge0
+      const testResults = await processSubmission(
+        code, 
+        language, 
+        competitionProblem.Problem.test_cases
+      );
+
+      const allPassed = testResults.every(result => result.passed);
+      const points = allPassed ? competitionProblem.Problem.points : 0;
+      
+      // Update submission with results - use score instead of points
+      await submission.update({
+        status: allPassed ? 'accepted' : 'rejected',
+        score: points, // Changed from points to score
+        test_results: JSON.stringify(testResults)
+      });
+
+      res.json({
+        success: true,
+        data: {
+          submissionId: submission.id,
+          status: allPassed ? 'accepted' : 'rejected',
+          points: points,
+          testResults: testResults
+        }
+      });
+    } catch (execError) {
+      console.error('Code execution error:', execError);
+      await submission.update({
+        status: 'error',
+        test_results: JSON.stringify({ error: execError.message })
+      });
+      
+      res.status(500).json({
+        success: false,
+        message: 'Error executing code',
+        error: execError.message
+      });
+    }
+  } catch (error) {
+    console.error('Error submitting solution:', error);
+    next(error);
+  }
+};
+
+// @desc    Run code for a competition problem
+// @route   POST /api/competitions/:id/problems/:problemId/run
+// @access  Private
+exports.runCompetitionCode = async (req, res, next) => {
+  try {
+    const { id, problemId } = req.params;
+    const userId = req.user.id;
+    const { code, language, input } = req.body;
+
+    // Check competition access
+    const accessCheck = await checkCompetitionAccess(id, userId, req.user.isAdmin);
+    if (!accessCheck.success) {
+      return res.status(403).json(accessCheck);
+    }
+
+    // Get problem details - Remove problem_type from attributes
+    const competitionProblem = await CompetitionProblem.findOne({
+      where: { 
+        [Op.or]: [
+          { id: problemId },
+          { problem_id: problemId, competition_id: id }
+        ]
+      },
+      include: {
+        model: Problem,
+        attributes: ['id', 'sample_input']
+      }
+    });
+
+    if (!competitionProblem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found in this competition'
+      });
+    }
+
+    // Execute the code with Judge0
+    try {
+      const testInput = input || competitionProblem.Problem.sample_input;
+      const result = await executeCode(code, language, testInput);
+      
+      res.json({
+        success: true,
+        data: {
+          output: result.output,
+          error: result.error,
+          executionTime: result.executionTime
+        }
+      });
+    } catch (execError) {
+      console.error('Code execution error:', execError);
+      res.status(500).json({
+        success: false,
+        message: 'Error executing code',
+        error: execError.message
+      });
+    }
+  } catch (error) {
+    console.error('Error running code:', error);
+    next(error);
+  }
+};
+
+// Placeholder function for processing submissions - replace with actual Judge0 integration
+async function processSubmission(code, language, testCases) {
+  // This would be replaced with actual Judge0 API calls or similar service
+  const results = [];
+
+  for (const testCase of testCases) {
+    try {
+      const executionResult = await executeCode(code, language, testCase.input);
+      const expectedOutput = testCase.output.trim();
+      const actualOutput = executionResult.output.trim();
+      const passed = actualOutput === expectedOutput;
+
+      results.push({
+        passed,
+        input: testCase.input,
+        expected: expectedOutput,
+        actual: actualOutput,
+        executionTime: executionResult.executionTime,
+        error: executionResult.error
+      });
+    } catch (error) {
+      results.push({
+        passed: false,
+        input: testCase.input,
+        expected: testCase.output,
+        actual: null,
+        error: error.message
+      });
+    }
+  }
+
+  return results;
+}
+
+// Placeholder function for executing code - replace with actual Judge0 integration
+async function executeCode(code, language, input) {
+  // Mock implementation - replace with actual Judge0 API calls
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // Mock result
+      resolve({
+        output: "Sample output",
+        error: null,
+        executionTime: 100
+      });
+    }, 500);
+  });
+}
+
+// Helper function to check competition access
+async function checkCompetitionAccess(competitionId, userId, isAdmin) {
+  // Get competition details
+  const competition = await Competition.findByPk(competitionId);
+
+  if (!competition) {
+    return {
+      success: false,
+      message: 'Competition not found'
+    };
+  }
+
+  // Check if competition is active
+  const now = new Date();
+  const startTime = new Date(competition.start_time);
+  const endTime = new Date(competition.end_time);
+
+  if (now < startTime && !isAdmin) {
+    return {
+      success: false,
+      message: 'Competition has not started yet'
+    };
+  }
+
+  if (now > endTime && !isAdmin) {
+    return {
+      success: false,
+      message: 'Competition has ended'
+    };
+  }
+
+  // Check if user is registered for competition
+  if (!isAdmin) {
+    const participant = await CompetitionParticipant.findOne({
+      where: { competition_id: competitionId, user_id: userId }
+    });
+
+    if (!participant) {
+      return {
+        success: false,
+        message: 'You are not registered for this competition'
+      };
+    }
+  }
+
+  return { success: true, competition };
+}
