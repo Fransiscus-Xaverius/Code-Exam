@@ -772,13 +772,16 @@ exports.getCompetitionWorkspace = async (req, res, next) => {
         user_id: userId,
         competition_id: id,
         status: 'accepted'
-      }
+      },
+      distinct: true,
+      group: ['user_id', 'competition_id']
     }) || 0;
 
     // Get total possible points
     const totalPoints = problems.reduce((total, problem) => {
       return total + (problem.Problem ? problem.Problem.points : 0);
     }, 0);
+    console.log({totalPoints, userPoints})
 
     // Get user's submission status for each problem
     const submissionStatuses = await exports.getUserSubmissionStatuses(userId, id);
