@@ -5,6 +5,8 @@ const User = require('../models/User');
 const Competition = require('../models/Competition');
 const sequelize = require('../config/database');
 const { submitToJudge0 } = require('../job/judge0');
+const CompetitionProblem = require('../models/CompetitionProblem');
+const CompetitionParticipant = require('../models/CompetitionParticipant');
 
 // @desc    Submit a solution to a problem
 // @route   POST /api/submissions
@@ -101,7 +103,7 @@ exports.createSubmission = async (req, res, next) => {
 };
 
 // @desc    Submit a formal solution for evaluation
-// @route   POST /api/submissions
+// @route   POST /api/submissions/submit
 // @access  Private
 exports.submit = async (req, res, next) => {
   try {
@@ -126,6 +128,65 @@ exports.submit = async (req, res, next) => {
         success: false,
         message: 'Problem not found'
       });
+    }
+
+    // Check if competition exists if competition_id is provided
+    if (competition_id) {
+      const competition = await Competition.findByPk(competition_id);
+      if (!competition) {
+        return res.status(404).json({
+          success: false,
+          message: 'Competition not found'
+        });
+      }
+
+      // Check if the user is registered for the competition
+      if (competition.registration_required) {
+        const participant = await CompetitionParticipant.findOne({
+          where: {
+            competition_id,
+            user_id: req.user.id
+          }
+        });
+
+        if (!participant && req.user.role !== 'admin') {
+          return res.status(403).json({
+            success: false,
+            message: 'You are not registered for this competition'
+          });
+        }
+      }
+
+      // Check if competition is active
+      const now = new Date();
+      if (now < new Date(competition.start_time) && req.user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Competition has not started yet'
+        });
+      }
+
+      if (now > new Date(competition.end_time) && req.user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Competition has ended'
+        });
+      }
+
+      // Verify the problem is part of the competition
+      const competitionProblem = await CompetitionProblem.findOne({
+        where: {
+          competition_id,
+          problem_id
+        }
+      });
+
+      if (!competitionProblem) {
+        return res.status(400).json({
+          success: false,
+          message: 'This problem is not part of the specified competition'
+        });
+      }
     }
 
     // Create submission with formal status

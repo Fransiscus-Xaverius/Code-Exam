@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import API from '../components/helpers/API';
 
@@ -95,12 +95,44 @@ const SolvePage = () => {
   const [error, setError] = useState(null);
   const [submissionId, setSubmissionId] = useState(null);
   const [submissionStatus, setSubmissionStatus] = useState(null);
+  
+  // Add state for competition
+  const [competitionId, setCompetitionId] = useState(null);
+  const [competition, setCompetition] = useState(null);
 
   const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
   const [submissionTitle, setSubmissionTitle] = useState('');
   const [submissionExplanation, setSubmissionExplanation] = useState('');
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Extract competition ID from URL query parameters
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    const compId = query.get('competition');
+    if (compId) {
+      setCompetitionId(compId);
+      fetchCompetitionDetails(compId);
+    }
+  }, [location.search]);
+
+  // Fetch competition details if we have a competition ID
+  const fetchCompetitionDetails = async (compId) => {
+    try {
+      const token = localStorage.getItem('codeexam_token');
+      const response = await API.get(`/api/competitions/${compId}`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : ''
+        }
+      });
+      
+      setCompetition(response.data.data);
+    } catch (err) {
+      console.error(`Error fetching competition details:`, err);
+      setError('Failed to load competition details. You may not have access to this competition.');
+    }
+  };
 
   useEffect(() => {
     const fetchProblemDetails = async () => {
@@ -227,11 +259,18 @@ const SolvePage = () => {
     try {
       const token = localStorage.getItem('codeexam_token');
       
-      const response = await API.post('/api/submissions/run-code', {
+      // Include competition_id in the request if available
+      const payload = {
         problem_id: id,
         code: code,
         language: getLanguageId(language)
-      }, {
+      };
+      
+      if (competitionId) {
+        payload.competition_id = competitionId;
+      }
+
+      const response = await API.post('/api/submissions/run-code', payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : ''
         }
@@ -326,10 +365,12 @@ const SolvePage = () => {
 
       const token = localStorage.getItem('codeexam_token');
 
+      // Include competition_id in the request if available
       const response = await API.post('/api/submissions/submit', {
         problem_id: id,
         code: code,
-        language: getLanguageId(language)  // Make sure to use getLanguageId here
+        language: getLanguageId(language),
+        competition_id: competitionId // Include competition_id if available
       }, {
         headers: {
           Authorization: token ? `Bearer ${token}` : ''
@@ -446,10 +487,17 @@ const SolvePage = () => {
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex space-x-4">
             <button className="px-3 py-1 rounded hover:bg-gray-600" onClick={() => navigate('/dashboard')}>Problem List</button>
+            {competitionId && (
+              <button className="px-3 py-1 rounded hover:bg-gray-600" onClick={() => navigate(`/competitions/${competitionId}/workspace`)}>
+                Competition Workspace
+              </button>
+            )}
             <button className="px-3 py-1 rounded hover:bg-gray-600">Solutions</button>
             <button className="px-3 py-1 rounded hover:bg-gray-600">Profile</button>
           </div>
-          <div className="text-xl font-bold">CodeExam</div>
+          <div className="text-xl font-bold">
+            {competition ? `${competition.name} - ` : ''}CodeExam
+          </div>
         </div>
       </nav>
 

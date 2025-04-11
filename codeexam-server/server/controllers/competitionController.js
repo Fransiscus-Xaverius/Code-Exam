@@ -1029,7 +1029,7 @@ exports.submitCompetitionSolution = async (req, res, next) => {
       },
       include: {
         model: Problem,
-        attributes: ['id', 'points', 'test_cases']
+        attributes: ['id', 'points', 'test_cases', 'hidden_test_cases']
       }
     });
 
@@ -1048,52 +1048,39 @@ exports.submitCompetitionSolution = async (req, res, next) => {
       code,
       language,
       status: 'pending',
-      score: 0 // Changed from points to score
+      score: 0
     });
 
-    // Process submission (assume all problems are coding problems)
-    try {
-      // Process test cases with Judge0
-      const testResults = await processSubmission(
-        code, 
-        language, 
-        competitionProblem.Problem.test_cases
-      );
-
-      const allPassed = testResults.every(result => result.passed);
-      const points = allPassed ? competitionProblem.Problem.points : 0;
-      
-      // Update submission with results - use score instead of points
-      await submission.update({
-        status: allPassed ? 'accepted' : 'rejected',
-        score: points, // Changed from points to score
-        test_results: JSON.stringify(testResults)
-      });
-
-      res.json({
-        success: true,
-        data: {
-          submissionId: submission.id,
-          status: allPassed ? 'accepted' : 'rejected',
-          points: points,
-          testResults: testResults
-        }
-      });
-    } catch (execError) {
-      console.error('Code execution error:', execError);
-      await submission.update({
-        status: 'error',
-        test_results: JSON.stringify({ error: execError.message })
+    // Prepare test cases - prioritize hidden test cases for formal evaluation
+    const testCases = competitionProblem.Problem.hidden_test_cases || competitionProblem.Problem.test_cases;
+    
+    if (!testCases || !Array.isArray(testCases) || testCases.length === 0) {
+      await submission.update({ 
+        status: 'error', 
+        judge_comment: 'No test cases available for this problem'
       });
       
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
-        message: 'Error executing code',
-        error: execError.message
+        message: 'No test cases available for this problem'
       });
     }
+    
+    // Process submission for evaluation
+    submitToJudge0(submission.id, code, language, testCases);
+
+    res.json({
+      success: true,
+      data: {
+        submission: {
+          id: submission.id,
+          status: submission.status,
+          submitted_at: submission.submitted_at
+        }
+      }
+    });
   } catch (error) {
-    console.error('Error submitting solution:', error);
+    console.error('Error submitting competition solution:', error);
     next(error);
   }
 };
@@ -1257,3 +1244,60 @@ async function checkCompetitionAccess(competitionId, userId, isAdmin) {
 
   return { success: true, competition };
 }
+
+// @desc    Get user's submissions for a competition
+// @route   GET /api/competitions/:id/submissions
+// @access  Private
+exports.getCompetitionSubmissions = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Verify competition exists
+    const competition = await Competition.findByPk(id);
+    if (!competition) {
+      return res.status(404).json({
+        success: false,
+        message: 'Competition not found'
+      });
+    }
+
+    // Verify user is registered for competition if not admin
+    if (!req.user.isAdmin && competition.registration_required) {
+      const participant = await CompetitionParticipant.findOne({
+        where: { competition_id: id, user_id: userId }
+      });
+
+      if (!participant) {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not registered for this competition'
+        });
+      }
+    }
+
+    // Get all submissions for this user in this competition
+    const submissions = await Submission.findAll({
+      where: {
+        user_id: userId,
+        competition_id: id
+      },
+      include: [
+        {
+          model: Problem,
+          as: 'problem',
+          attributes: ['id', 'title', 'difficulty', 'points']
+        }
+      ],
+      order: [['submitted_at', 'DESC']]
+    });
+
+    res.status(200).json({
+      success: true,
+      data: submissions
+    });
+  } catch (error) {
+    console.error('Error getting competition submissions:', error);
+    next(error);
+  }
+};
