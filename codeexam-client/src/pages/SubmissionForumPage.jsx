@@ -83,7 +83,8 @@ const SubmissionsForumPage = () => {
   // Fetch Comments
   const fetchComments = async (submissionId) => {
     try {
-      const response = await API.get(`/api/discussions/${submissionId}/comments`);
+      // Updated endpoint path
+      const response = await API.get(`/api/comments/discussion/${submissionId}`);
       setComments(prev => ({ 
         ...prev, 
         [submissionId]: response.data.comments || [] 
@@ -94,12 +95,12 @@ const SubmissionsForumPage = () => {
     }
   };
 
-  // Add Comment
   const addComment = async (submissionId, commentText) => {
     if (!commentText.trim()) return;
     
     try {
-      const response = await API.post(`/api/discussions/${submissionId}/comments`, {
+      // Updated endpoint path
+      const response = await API.post(`/api/comments/discussion/${submissionId}`, {
         content: commentText
       });
       
@@ -122,10 +123,10 @@ const SubmissionsForumPage = () => {
     }
   };
 
-  // Like Submission
   const likeSubmission = async (submissionId) => {
     try {
-      await API.post(`/api/discussions/${submissionId}/like`);
+      // Updated endpoint path
+      await API.post(`/api/comments/discussion/${submissionId}/like`);
       
       setSubmissions(prev => 
         prev.map(sub => 

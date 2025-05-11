@@ -10,6 +10,7 @@ const frontendProblemRoutes = require('./routes/frontendProblem');
 const frontendSubmissionRoutes = require('./routes/frontendSubmission');
 const discussionRoutes = require('./routes/discussion');
 const submissionRoutes = require('./routes/submission');
+const discussionCommentsRoutes = require('./routes/discussionComments');
 
 const { errorHandler } = require('./middleware/errorHandler');
 const db = require('./config/database');
@@ -28,6 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/competitions', competitionRoutes);
 app.use('/api/discussions', discussionRoutes);
+app.use('/api/comments', discussionCommentsRoutes);
 app.use('/api/frontend-problems', frontendProblemRoutes);
 app.use('/api/frontend-submissions', frontendSubmissionRoutes);
 app.use('/api/submissions', submissionRoutes);
