@@ -36,8 +36,6 @@ router.post('/submit', protect(), submit);
 // @access Protected
 router.get('/public', protect(), getPublicSubmissions);
 
-// router.get('/', protect(), getSubmissions);
-
 // @route GET /api/submissions/:id
 // @desc Get a specific submission
 // @access Protected
