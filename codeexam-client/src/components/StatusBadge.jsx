@@ -19,7 +19,7 @@ const getStatusIcon = (status) => {
   switch (status?.toUpperCase()) {
     case 'ACCEPTED':
       return <Check className="h-4 w-4 mr-1" />;
-    case 'REJECTED':
+    case 'WRONG_ANSWER':
       return <X className="h-4 w-4 mr-1" />;
     case 'PENDING':
     case 'PROCESSING':

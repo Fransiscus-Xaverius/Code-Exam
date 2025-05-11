@@ -484,22 +484,30 @@ const SolvePage = () => {
       </Dialog>
 
       <nav className="bg-gray-800 text-white p-4 shadow-md">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex space-x-4">
-            <button className="px-3 py-1 rounded hover:bg-gray-600" onClick={() => navigate('/dashboard')}>Problem List</button>
-            {competitionId && (
-              <button className="px-3 py-1 rounded hover:bg-gray-600" onClick={() => navigate(`/competitions/${competitionId}/workspace`)}>
-                Competition Workspace
-              </button>
-            )}
-            <button className="px-3 py-1 rounded hover:bg-gray-600">Solutions</button>
-            <button className="px-3 py-1 rounded hover:bg-gray-600">Profile</button>
-          </div>
-          <div className="text-xl font-bold">
-            {competition ? `${competition.name} - ` : ''}CodeExam
-          </div>
-        </div>
-      </nav>
+  <div className="container mx-auto flex justify-between items-center" style={{width: '100% !important'}}>
+    {/* Left section */}
+    <div className="flex space-x-4">
+      {!competitionId && (
+        <button className="px-3 py-1 rounded hover:bg-gray-600" onClick={() => navigate('/dashboard')}>Problem List</button>
+      )}
+      {competitionId && (
+        <button className="px-3 py-1 rounded hover:bg-gray-600" onClick={() => navigate(`/competitions/${competitionId}/workspace`)}>
+          Competition Workspace
+        </button>
+      )}
+      {!competitionId && (<button className="px-3 py-1 rounded hover:bg-gray-600">Solutions</button>)}
+      {!competitionId && (<button className="px-3 py-1 rounded hover:bg-gray-600">Profile</button>)}
+    </div>
+    
+    {/* Right section */}
+    <div className="text-xl font-bold">
+      {competitionId ? 
+        (competition ? `${competition.name} - ` : '') + `Problem : ${problem ? problem.title : 'Loading...'}` : 
+        'CodeExam'
+      }
+    </div>
+  </div>
+</nav>
 
       <div className="flex flex-1 overflow-hidden">
         <div className="w-1/3 bg-gray-200 overflow-y-auto p-6 border-r border-gray-300">
