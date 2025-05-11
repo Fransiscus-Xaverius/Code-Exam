@@ -62,7 +62,7 @@ router.put('/:id/publish', protect(), publishSubmission);
 // @route   GET /api/submissionsubmissions);
 // @desc    Get all submissions
 // @access  Private (Admin/Judge only)
-router.get('/', protect(['admin', 'judge']), getSubmissions);
+router.get('/', protect(), getSubmissions);
 
 // @access  Private (Admin/Judge only)
 // @route   GET /api/submissions/public

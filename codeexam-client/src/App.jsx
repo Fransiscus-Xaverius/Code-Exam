@@ -16,6 +16,8 @@ import CompetitionFormPage from './pages/competition/CompetitionFormPage';
 import SubmissionsForumPage from './pages/SubmissionForumPage';
 import FrontendSolvePage from './pages/FrontEndSolvePage';
 import CompetitionWorkspacePage from './pages/competition/CompetitionWorkspacePage';
+import MySubmissionsPage from './pages/MySubmissionsPage';
+import SubmissionDetailsPage from './pages/SubmissionDetailPage';
 
 // Responsive wrapper component
 const ResponsiveWrapper = ({ children }) => {
@@ -151,6 +153,18 @@ const AppRoutes = () => {
       <Route path="/competitions/:competitionId/problems/:problemId/solve" element={
         <ProtectedRoute>
           <SolvePage />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/my-submissions" element={
+        <ProtectedRoute>
+          <MySubmissionsPage />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/submissions/:id" element={
+        <ProtectedRoute>
+          <SubmissionDetailsPage />
         </ProtectedRoute>
       } />
 
