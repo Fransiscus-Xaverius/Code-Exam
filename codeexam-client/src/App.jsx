@@ -18,6 +18,7 @@ import FrontendSolvePage from './pages/FrontEndSolvePage';
 import CompetitionWorkspacePage from './pages/competition/CompetitionWorkspacePage';
 import MySubmissionsPage from './pages/MySubmissionsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailPage';
+import UserManagementPage from './pages/UserManagementPage';
 
 // Responsive wrapper component
 const ResponsiveWrapper = ({ children }) => {
@@ -168,6 +169,11 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
+      <Route path='/manage/users' element={
+        <AdminRoute>
+          <UserManagementPage />
+        </AdminRoute>
+      } />
       <Route path="/" element={<Navigate to="/dashboard" />} />
       <Route path="*" element={<Navigate to="/404" />} />
     </Routes>

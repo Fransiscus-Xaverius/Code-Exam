@@ -1,38 +1,96 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Code, Trophy, UserCircle, Database, Users, Settings, LogOut, BookOpen } from 'lucide-react';
+import { 
+  Code, Trophy, UserCircle, Database, Users, Settings, 
+  LogOut, BookOpen, FileText, Menu, X 
+} from 'lucide-react';
 import { logout, toggleUserRole } from '../redux/slices/authSlice';
 
 const Sidebar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
-  const { userRole } = useSelector((state) => state.auth);
+  const { userRole, user } = useSelector((state) => state.auth);
 
   // Define navigation items based on user role
-  const commonItems = [
-    { icon: <Code className="h-5 w-5" />, label: 'Problems', path: '/problems' },
-    { icon: <Trophy className="h-5 w-5" />, label: 'Competitions', path: '/competitions' },
-    { icon: <BookOpen className='h-5 w-5'/>, label: 'Discussions', path: '/discussions'}
-  ];
-  
-  const roleSpecificItems = {
-    competitor: [
-      { icon: <UserCircle className="h-5 w-5" />, label: 'My Profile', path: '/profile' },
-      { icon: <Database className="h-5 w-5" />, label: 'My Submissions', path: '/my-submissions' },
-    ],
-    admin: [
-      { icon: <Users className="h-5 w-5" />, label: 'User Admin', path: '/participants' },
-      { icon: <Settings className="h-5 w-5" />, label: 'Platform Settings', path: '/settings' },
-      { icon: <Database className="h-5 w-5" />, label: 'All Submissions', path: '/submissions' },
-    ],
-    judge: [
-      { icon: <Database className="h-5 w-5" />, label: 'Review Submissions', path: '/review' },
-      { icon: <Users className="h-5 w-5" />, label: 'Judge Panel', path: '/judge-panel' },
-    ]
+  const getNavigationItems = (role) => {
+    const commonItems = [
+      { 
+        icon: <Database className="h-5 w-5" />, 
+        label: 'Problems', 
+        path: '/dashboard',
+        active: location.pathname === '/dashboard' || location.pathname === '/' 
+      },
+      { 
+        icon: <Trophy className="h-5 w-5" />, 
+        label: 'Competitions', 
+        path: '/competitions',
+        active: location.pathname.startsWith('/competitions')
+      },
+      { 
+        icon: <BookOpen className='h-5 w-5'/>, 
+        label: 'Discussions', 
+        path: '/discussions',
+        active: location.pathname === '/discussions'
+      }
+    ];
+    
+    const roleSpecificItems = {
+      competitor: [
+        { 
+          icon: <UserCircle className="h-5 w-5" />, 
+          label: 'My Profile', 
+          path: '/profile',
+          active: location.pathname === '/profile'
+        },
+        { 
+          icon: <FileText className="h-5 w-5" />, 
+          label: 'My Submissions', 
+          path: '/my-submissions',
+          active: location.pathname === '/my-submissions'
+        },
+      ],
+      admin: [
+        { 
+          icon: <Users className="h-5 w-5" />, 
+          label: 'User Management', 
+          path: '/manage/users',
+          active: location.pathname === '/manage/users'
+        },
+        { 
+          icon: <Settings className="h-5 w-5" />, 
+          label: 'Platform Settings', 
+          path: '/settings',
+          active: location.pathname === '/settings'
+        },
+        { 
+          icon: <FileText className="h-5 w-5" />, 
+          label: 'All Submissions', 
+          path: '/submissions',
+          active: location.pathname === '/submissions'
+        },
+      ],
+      judge: [
+        { 
+          icon: <FileText className="h-5 w-5" />, 
+          label: 'Review Submissions', 
+          path: '/review',
+          active: location.pathname === '/review'
+        },
+        { 
+          icon: <Users className="h-5 w-5" />, 
+          label: 'Judge Panel', 
+          path: '/judge-panel',
+          active: location.pathname === '/judge-panel'
+        },
+      ]
+    };
+    
+    return [...commonItems, ...(roleSpecificItems[role] || [])];
   };
   
-  const items = [...commonItems, ...(roleSpecificItems[userRole] || [])];
+  const navigationItems = getNavigationItems(userRole);
   
   // Handler for navigation
   const handleNavigation = (path) => {
@@ -51,24 +109,38 @@ const Sidebar = () => {
   };
   
   return (
-    <div className="bg-gray-800 text-white w-64 h-screen fixed left-0 top-0">
+    <div className="bg-gray-800 text-white w-64 h-screen fixed left-0 top-0 z-20 overflow-y-auto">
       <div className="p-4 border-b border-gray-700">
-        <h1 className="text-xl font-bold">CodeExam</h1>
+        <div className="flex items-center">
+          <Code className="h-8 w-8 text-blue-400 mr-2" />
+          <h1 className="text-xl font-bold">CodeExam</h1>
+        </div>
         <div className="text-sm text-gray-400 mt-1">
-          Logged in as <span className="font-medium text-gray-200 capitalize">{userRole}</span>
+          <span className="font-medium text-gray-200 capitalize">{userRole}</span>
+          {user && (
+            <div className="text-xs mt-1">
+              {user.username}
+            </div>
+          )}
         </div>
       </div>
       
-      <nav className="mt-4">
-        <ul>
-          {items.map((item, index) => (
+      <nav className="mt-4 px-2">
+        <ul className="space-y-1">
+          {navigationItems.map((item, index) => (
             <li key={index}>
               <button 
                 onClick={() => handleNavigation(item.path)} 
-                className="w-full flex items-center px-4 py-3 hover:bg-gray-700 text-left"
+                className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors duration-200 ${
+                  item.active 
+                    ? 'bg-blue-600 text-white shadow-sm' 
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }`}
               >
-                {item.icon}
-                <span className="ml-3">{item.label}</span>
+                <span className={`${item.active ? 'text-white' : 'text-gray-400'} transition-colors`}>
+                  {item.icon}
+                </span>
+                <span className="ml-3 font-medium">{item.label}</span>
               </button>
             </li>
           ))}
@@ -78,13 +150,14 @@ const Sidebar = () => {
       <div className="absolute bottom-4 left-0 right-0 px-4 space-y-2">
         <button
           onClick={handleToggleRole}
-          className="w-full bg-gray-700 text-white py-2 px-4 rounded hover:bg-gray-600 text-sm"
+          className="w-full bg-gray-700 text-white py-2 px-4 rounded-lg hover:bg-gray-600 text-sm transition-colors duration-200 flex items-center justify-center"
         >
-          Switch Role (Demo)
+          <UserCircle className="h-4 w-4 mr-2" />
+          Switch Role
         </button>
         <button
           onClick={handleLogout}
-          className="w-full bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 text-sm flex items-center justify-center"
+          className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 text-sm flex items-center justify-center transition-colors duration-200"
         >
           <LogOut className="h-4 w-4 mr-2" />
           Logout

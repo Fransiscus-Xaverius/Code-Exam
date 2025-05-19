@@ -11,6 +11,8 @@ const frontendSubmissionRoutes = require('./routes/frontendSubmission');
 const discussionRoutes = require('./routes/discussion');
 const submissionRoutes = require('./routes/submission');
 const discussionCommentsRoutes = require('./routes/discussionComments');
+const manageUserRoutes = require('./routes/userRoutes');
+const warningRoutes = require('./routes/warningRoutes');
 
 const { errorHandler } = require('./middleware/errorHandler');
 const db = require('./config/database');
@@ -33,6 +35,8 @@ app.use('/api/comments', discussionCommentsRoutes);
 app.use('/api/frontend-problems', frontendProblemRoutes);
 app.use('/api/frontend-submissions', frontendSubmissionRoutes);
 app.use('/api/submissions', submissionRoutes);
+app.use('/api/manage/users', manageUserRoutes);
+app.use('/api/manage', warningRoutes);
 
 // Error Handler
 app.use(errorHandler);

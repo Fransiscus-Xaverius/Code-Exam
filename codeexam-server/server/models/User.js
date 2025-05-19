@@ -47,7 +47,18 @@ const User = db.define('user', {
   last_name: {
     type: DataTypes.STRING(50),
     allowNull: true
-  }
+  },
+  status: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    defaultValue: 'active',
+    validate: {
+      isIn: {
+        args: [['active', 'inactive', 'banned']],
+        msg: 'Status must be either active, inactive or banned'
+      }
+    }
+  },
 }, {
   tableName: 'users',
   timestamps: true,

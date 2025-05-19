@@ -6,6 +6,7 @@ CREATE TABLE users (
     role VARCHAR(20) NOT NULL CHECK (role IN ('competitor', 'admin', 'judge')),
     first_name VARCHAR(50),
     last_name VARCHAR(50),
+    user_status VARCHAR(50),
     avatar_url VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -137,6 +138,26 @@ CREATE TABLE leaderboard (
     FOREIGN KEY (competition_id) REFERENCES competitions(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE warnings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    admin_id INT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_warnings_user_id ON warnings(user_id);
+CREATE INDEX idx_warnings_admin_id ON warnings(admin_id);
+
+ALTER TABLE warnings 
+ADD CONSTRAINT fk_warnings_user_id 
+FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE warnings 
+ADD CONSTRAINT fk_warnings_admin_id 
+FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE RESTRICT;
 
 CREATE INDEX idx_submissions_user_id ON submissions(user_id);
 CREATE INDEX idx_submissions_problem_id ON submissions(problem_id);
