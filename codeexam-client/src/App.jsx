@@ -166,9 +166,9 @@ const AppRoutes = () => {
       } />
 
       <Route path="/feedback" element={
-        <AdminRoute>
+        <ProtectedRoute>
           <FeedbackPage />
-        </AdminRoute>
+        </ProtectedRoute>
       } />
 
       <Route path="/manage/feedback" element={
