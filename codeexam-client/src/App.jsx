@@ -19,6 +19,8 @@ import CompetitionWorkspacePage from './pages/competition/CompetitionWorkspacePa
 import MySubmissionsPage from './pages/MySubmissionsPage';
 import SubmissionDetailsPage from './pages/SubmissionDetailPage';
 import UserManagementPage from './pages/UserManagementPage';
+import FeedbackManagementPage from './pages/FeedbackManagementPage';
+import FeedbackPage from './pages/FeedbackPage';
 
 // Responsive wrapper component
 const ResponsiveWrapper = ({ children }) => {
@@ -161,6 +163,18 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <MySubmissionsPage />
         </ProtectedRoute>
+      } />
+
+      <Route path="/feedback" element={
+        <AdminRoute>
+          <FeedbackPage />
+        </AdminRoute>
+      } />
+
+      <Route path="/manage/feedback" element={
+        <AdminRoute>
+          <FeedbackManagementPage />
+        </AdminRoute>
       } />
 
       <Route path="/submissions/:id" element={

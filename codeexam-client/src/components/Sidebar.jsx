@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
   Code, Trophy, UserCircle, Database, Users, Settings, 
-  LogOut, BookOpen, FileText, Menu, X 
+  LogOut, BookOpen, FileText, Menu, X, MessageSquare,
+  Inbox, Activity
 } from 'lucide-react';
 import { logout, toggleUserRole } from '../redux/slices/authSlice';
 
@@ -50,6 +51,12 @@ const Sidebar = () => {
           path: '/my-submissions',
           active: location.pathname === '/my-submissions'
         },
+        { 
+          icon: <MessageSquare className="h-5 w-5" />, 
+          label: 'Submit Feedback', 
+          path: '/feedback',
+          active: location.pathname === '/feedback'
+        },
       ],
       admin: [
         { 
@@ -59,16 +66,22 @@ const Sidebar = () => {
           active: location.pathname === '/manage/users'
         },
         { 
-          icon: <Settings className="h-5 w-5" />, 
-          label: 'Platform Settings', 
-          path: '/settings',
-          active: location.pathname === '/settings'
-        },
-        { 
           icon: <FileText className="h-5 w-5" />, 
           label: 'All Submissions', 
           path: '/submissions',
           active: location.pathname === '/submissions'
+        },
+        { 
+          icon: <Inbox className="h-5 w-5" />, 
+          label: 'Manage Feedback', 
+          path: '/manage/feedback',
+          active: location.pathname === '/manage/feedback'
+        },
+        { 
+          icon: <Settings className="h-5 w-5" />, 
+          label: 'Platform Settings', 
+          path: '/settings',
+          active: location.pathname === '/settings'
         },
       ],
       judge: [
@@ -79,10 +92,16 @@ const Sidebar = () => {
           active: location.pathname === '/review'
         },
         { 
-          icon: <Users className="h-5 w-5" />, 
+          icon: <Activity className="h-5 w-5" />, 
           label: 'Judge Panel', 
           path: '/judge-panel',
           active: location.pathname === '/judge-panel'
+        },
+        { 
+          icon: <MessageSquare className="h-5 w-5" />, 
+          label: 'Feedback', 
+          path: '/feedback',
+          active: location.pathname === '/feedback'
         },
       ]
     };
