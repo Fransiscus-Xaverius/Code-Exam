@@ -14,6 +14,7 @@ const discussionCommentsRoutes = require('./routes/discussionComments');
 const manageUserRoutes = require('./routes/userRoutes');
 const warningRoutes = require('./routes/warningRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
+const profileRoutes = require('./routes/profileRoutes')
 
 const { errorHandler } = require('./middleware/errorHandler');
 const db = require('./config/database');
@@ -39,6 +40,7 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/manage/users', manageUserRoutes);
 app.use('/api/manage', warningRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Error Handler
 app.use(errorHandler);

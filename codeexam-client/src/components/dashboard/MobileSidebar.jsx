@@ -66,6 +66,16 @@ const MobileSidebar = ({
                             <Trophy className="mr-3" size={20} />
                             <span>Competitions</span>
                         </a>
+                        <a
+                            onClick={() => {
+                                navigate('/profile');
+                                toggleSidebar();
+                            }}
+                            className="flex items-center p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                            <User className="mr-3" size={20} />
+                            <span>Profile</span>
+                        </a>
                         {(userRole === 'admin' || userRole === 'judge') && (
                             <a
                                 onClick={() => {

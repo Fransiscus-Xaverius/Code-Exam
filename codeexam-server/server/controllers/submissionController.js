@@ -736,7 +736,7 @@ exports.getSubmissionStats = async (req, res, next) => {
     const problemCounts = await Submission.findAll({
       attributes: [
         'problem_id',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        [sequelize.fn('COUNT', sequelize.col('Submission.id')), 'count']
       ],
       where: { user_id: userId },
       group: ['problem_id'],
@@ -744,7 +744,8 @@ exports.getSubmissionStats = async (req, res, next) => {
         {
           model: Problem,
           as: 'problem',
-          attributes: ['title']
+          attributes: ['title'],
+          required: false
         }
       ]
     });
@@ -768,7 +769,8 @@ exports.getSubmissionStats = async (req, res, next) => {
         {
           model: Problem,
           as: 'problem',
-          attributes: ['id', 'title']
+          attributes: ['id', 'title'],
+          required: false
         }
       ],
       attributes: ['id', 'status', 'score', 'submitted_at']
@@ -784,6 +786,7 @@ exports.getSubmissionStats = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('Error getting submission stats:', error);
     next(error);
   }
 };

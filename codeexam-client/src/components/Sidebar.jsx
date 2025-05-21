@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { 
   Code, Trophy, UserCircle, Database, Users, Settings, 
   LogOut, BookOpen, FileText, Menu, X, MessageSquare,
-  Inbox, Activity
+  Inbox, Activity, User
 } from 'lucide-react';
 import { logout, toggleUserRole } from '../redux/slices/authSlice';
 
@@ -34,6 +34,10 @@ const Sidebar = () => {
         label: 'Discussions', 
         path: '/discussions',
         active: location.pathname === '/discussions'
+      },
+      { icon: <User className='h-5 w-5'/>,
+        label: 'Profile', 
+        path: '/profile'
       }
     ];
     

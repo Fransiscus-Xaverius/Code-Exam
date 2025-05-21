@@ -21,6 +21,7 @@ import SubmissionDetailsPage from './pages/SubmissionDetailPage';
 import UserManagementPage from './pages/UserManagementPage';
 import FeedbackManagementPage from './pages/FeedbackManagementPage';
 import FeedbackPage from './pages/FeedbackPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Responsive wrapper component
 const ResponsiveWrapper = ({ children }) => {
@@ -127,6 +128,12 @@ const AppRoutes = () => {
       <Route path="/competitions/:id" element={
         <ProtectedRoute>
           <CompetitionDetailsPage />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <ProfilePage />
         </ProtectedRoute>
       } />
 
