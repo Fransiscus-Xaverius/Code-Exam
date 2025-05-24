@@ -43,7 +43,8 @@ const ProblemFormPage = () => {
     difficulty: true,
     points: true,
     time_limit_ms: true,
-    memory_limit_kb: true
+    memory_limit_kb: true,
+    hidden_test_cases: true
   });
   
   // Fetch problem data if in edit mode
@@ -68,7 +69,30 @@ const ProblemFormPage = () => {
         
         // Populate form with existing data
         if (response.data.success) {
-          setFormData(response.data.problem);
+          const problemData = response.data.problem;
+          
+          // Handle hidden_test_cases conversion from array/object to string
+          let hiddenTestCasesString = '';
+          if (problemData.hidden_test_cases) {
+            if (typeof problemData.hidden_test_cases === 'string') {
+              try {
+                // If it's already a string, try to parse and reformat it
+                const parsed = JSON.parse(problemData.hidden_test_cases);
+                hiddenTestCasesString = JSON.stringify(parsed, null, 2);
+              } catch (e) {
+                // If parsing fails, use as is
+                hiddenTestCasesString = problemData.hidden_test_cases;
+              }
+            } else {
+              // If it's an object/array, convert to formatted JSON string
+              hiddenTestCasesString = JSON.stringify(problemData.hidden_test_cases, null, 2);
+            }
+          }
+          
+          setFormData({
+            ...problemData,
+            hidden_test_cases: hiddenTestCasesString
+          });
           setError(null);
         } else {
           setError(response.data.message || 'Failed to load problem data');
@@ -101,15 +125,41 @@ const ProblemFormPage = () => {
     }
   };
   
+  // Validate hidden test cases JSON format
+  const validateHiddenTestCases = (value) => {
+    if (!value.trim()) return true; // Empty is valid
+    
+    try {
+      const parsed = JSON.parse(value);
+      if (!Array.isArray(parsed)) {
+        return false;
+      }
+      
+      // Check if each test case has input and output properties
+      for (const testCase of parsed) {
+        if (!testCase.hasOwnProperty('input') || !testCase.hasOwnProperty('output')) {
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+  
   // Validate form before submission
   const validateForm = () => {
+    const hiddenTestCasesValid = validateHiddenTestCases(formData.hidden_test_cases);
+    
     const newValidation = {
       title: !!formData.title.trim(),
       description: !!formData.description.trim(),
       difficulty: ['Easy', 'Medium', 'Hard'].includes(formData.difficulty),
       points: Number(formData.points) > 0,
       time_limit_ms: Number(formData.time_limit_ms) > 0,
-      memory_limit_kb: Number(formData.memory_limit_kb) > 0
+      memory_limit_kb: Number(formData.memory_limit_kb) > 0,
+      hidden_test_cases: hiddenTestCasesValid
     };
     
     setValidation(newValidation);
@@ -133,12 +183,24 @@ const ProblemFormPage = () => {
     try {
       setIsSubmitting(true);
       
-      // Prepare numerical fields
+      // Prepare numerical fields and handle hidden_test_cases
+      let hiddenTestCases = null;
+      if (formData.hidden_test_cases.trim()) {
+        try {
+          hiddenTestCases = JSON.parse(formData.hidden_test_cases);
+        } catch (e) {
+          setError('Invalid JSON format for hidden test cases.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
       const submitData = {
         ...formData,
         points: Number(formData.points),
         time_limit_ms: Number(formData.time_limit_ms),
-        memory_limit_kb: Number(formData.memory_limit_kb)
+        memory_limit_kb: Number(formData.memory_limit_kb),
+        hidden_test_cases: hiddenTestCases
       };
       
       const headers = {
@@ -173,7 +235,7 @@ const ProblemFormPage = () => {
     const tooltips = {
       time_limit_ms: 'Maximum execution time in milliseconds',
       memory_limit_kb: 'Maximum memory usage in kilobytes',
-      hidden_test_cases: 'JSON array of test cases used for judging but not shown to participants'
+      hidden_test_cases: 'JSON array of test cases used for judging but not shown to participants. Each test case should have "input" and "output" properties.'
     };
     
     return tooltips[field] || '';
@@ -473,12 +535,24 @@ const ProblemFormPage = () => {
                         name="hidden_test_cases"
                         value={formData.hidden_test_cases}
                         onChange={handleChange}
-                        rows="6"
-                        className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                        placeholder='JSON array format: [{"input": "5\n1 2 3 4 5", "output": "15"}]'
+                        rows="8"
+                        className={`w-full rounded border ${!validation.hidden_test_cases ? 'border-red-500' : 'border-gray-300'} px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm`}
+                        placeholder={`[
+  {
+    "input": "4\\n2 7 11 15\\n9",
+    "output": "0 1"
+  },
+  {
+    "input": "3\\n3 2 4\\n6",
+    "output": "1 2"
+  }
+]`}
                       />
+                      {!validation.hidden_test_cases && (
+                        <p className="text-red-500 text-xs mt-1">Invalid JSON format. Each test case must have "input" and "output" properties.</p>
+                      )}
                       <p className="text-xs text-gray-500 mt-1">
-                        Enter as JSON array of objects with "input" and "output" properties
+                        Enter as JSON array of objects with "input" and "output" properties. Use \\n for newlines in input/output strings.
                       </p>
                     </div>
                   </div>
