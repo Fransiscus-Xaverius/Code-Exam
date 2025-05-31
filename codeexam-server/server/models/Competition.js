@@ -71,7 +71,41 @@ const Competition = sequelize.define('Competition', {
   tableName: 'competitions',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_competitions_created_by',
+      fields: ['created_by']
+    },
+    {
+      name: 'idx_competitions_start_time',
+      fields: ['start_time']
+    },
+    {
+      name: 'idx_competitions_end_time',
+      fields: ['end_time']
+    },
+    {
+      name: 'idx_competitions_time_range',
+      fields: ['start_time', 'end_time']
+    },
+    {
+      name: 'idx_competitions_is_public',
+      fields: ['is_public']
+    },
+    {
+      name: 'idx_competitions_registration_required',
+      fields: ['registration_required']
+    },
+    {
+      name: 'idx_competitions_public_active',
+      fields: ['is_public', 'start_time', 'end_time']
+    },
+    {
+      name: 'idx_competitions_created_at',
+      fields: ['created_at']
+    }
+  ]
 });
 
 // Association with User model

@@ -95,7 +95,45 @@ const Feedback = sequelize.define('Feedback', {
   tableName: 'feedbacks',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_feedbacks_user_id',
+      fields: ['user_id']
+    },
+    {
+      name: 'idx_feedbacks_category',
+      fields: ['category']
+    },
+    {
+      name: 'idx_feedbacks_status',
+      fields: ['status']
+    },
+    {
+      name: 'idx_feedbacks_rating',
+      fields: ['rating']
+    },
+    {
+      name: 'idx_feedbacks_problem_id',
+      fields: ['problem_id']
+    },
+    {
+      name: 'idx_feedbacks_competition_id',
+      fields: ['competition_id']
+    },
+    {
+      name: 'idx_feedbacks_created_at',
+      fields: ['created_at']
+    },
+    {
+      name: 'idx_feedbacks_category_status',
+      fields: ['category', 'status']
+    },
+    {
+      name: 'idx_feedbacks_user_category',
+      fields: ['user_id', 'category']
+    }
+  ]
 });
 
 // Association with User model

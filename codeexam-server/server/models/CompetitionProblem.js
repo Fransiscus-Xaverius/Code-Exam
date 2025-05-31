@@ -30,7 +30,26 @@ const CompetitionProblem = sequelize.define('CompetitionProblem', {
 }, {
   tableName: 'competition_problems',
   timestamps: false,
-  underscored: true
+  underscored: true,
+  indexes: [
+    {
+      name: 'idx_comp_problems_competition_id',
+      fields: ['competition_id']
+    },
+    {
+      name: 'idx_comp_problems_problem_id',
+      fields: ['problem_id']
+    },
+    {
+      name: 'idx_comp_problems_order',
+      fields: ['competition_id', 'order_index']
+    },
+    {
+      name: 'idx_comp_problems_unique',
+      fields: ['competition_id', 'problem_id'],
+      unique: true
+    }
+  ]
 });
 
 // Define associations

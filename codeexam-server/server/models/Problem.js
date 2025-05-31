@@ -110,7 +110,45 @@ const Problem = sequelize.define('Problem', {
   tableName: 'problems',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_problems_difficulty',
+      fields: ['difficulty']
+    },
+    {
+      name: 'idx_problems_points',
+      fields: ['points']
+    },
+    {
+      name: 'idx_problems_created_by',
+      fields: ['created_by']
+    },
+    {
+      name: 'idx_problems_created_at',
+      fields: ['created_at']
+    },
+    {
+      name: 'idx_problems_time_limit',
+      fields: ['time_limit_ms']
+    },
+    {
+      name: 'idx_problems_memory_limit',
+      fields: ['memory_limit_kb']
+    },
+    {
+      name: 'idx_problems_title',
+      fields: ['title']
+    },
+    {
+      name: 'idx_problems_difficulty_points',
+      fields: ['difficulty', 'points']
+    },
+    {
+      name: 'idx_problems_limits',
+      fields: ['time_limit_ms', 'memory_limit_kb']
+    }
+  ]
 });
 
 // Association with User model

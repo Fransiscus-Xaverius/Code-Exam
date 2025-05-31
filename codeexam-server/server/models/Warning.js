@@ -41,7 +41,25 @@ const Warning = db.define('warning', {
   timestamps: true,
   underscored: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_warnings_user_id',
+      fields: ['user_id']
+    },
+    {
+      name: 'idx_warnings_admin_id',
+      fields: ['admin_id']
+    },
+    {
+      name: 'idx_warnings_created_at',
+      fields: ['created_at']
+    },
+    {
+      name: 'idx_warnings_user_created',
+      fields: ['user_id', 'created_at']
+    }
+  ]
 });
 
 // Define associations

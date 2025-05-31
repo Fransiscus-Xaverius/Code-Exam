@@ -114,7 +114,81 @@ const Submission = sequelize.define('Submission', {
   tableName: 'submissions',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_submissions_user_id',
+      fields: ['user_id']
+    },
+    {
+      name: 'idx_submissions_problem_id',
+      fields: ['problem_id']
+    },
+    {
+      name: 'idx_submissions_competition_id',
+      fields: ['competition_id']
+    },
+    {
+      name: 'idx_submissions_status',
+      fields: ['status']
+    },
+    {
+      name: 'idx_submissions_language',
+      fields: ['language']
+    },
+    {
+      name: 'idx_submissions_judge_id',
+      fields: ['judge_id']
+    },
+    {
+      name: 'idx_submissions_submitted_at',
+      fields: ['submitted_at']
+    },
+    {
+      name: 'idx_submissions_judged_at',
+      fields: ['judged_at']
+    },
+    {
+      name: 'idx_submissions_created_at',
+      fields: ['created_at']
+    },
+    {
+      name: 'idx_submissions_score',
+      fields: ['score']
+    },
+    {
+      name: 'idx_submissions_execution_time',
+      fields: ['execution_time_ms']
+    },
+    {
+      name: 'idx_submissions_memory_used',
+      fields: ['memory_used_kb']
+    },
+    {
+      name: 'idx_submissions_is_published',
+      fields: ['is_published']
+    },
+    {
+      name: 'idx_submissions_user_problem',
+      fields: ['user_id', 'problem_id']
+    },
+    {
+      name: 'idx_submissions_problem_status',
+      fields: ['problem_id', 'status']
+    },
+    {
+      name: 'idx_submissions_competition_user',
+      fields: ['competition_id', 'user_id']
+    },
+    {
+      name: 'idx_submissions_user_submitted_at',
+      fields: ['user_id', 'submitted_at']
+    },
+    {
+      name: 'idx_submissions_status_judged_at',
+      fields: ['status', 'judged_at']
+    }
+  ]
 });
 
 // Associations

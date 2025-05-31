@@ -65,6 +65,37 @@ const User = db.define('user', {
   underscored: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_users_email',
+      fields: ['email'],
+      unique: true
+    },
+    {
+      name: 'idx_users_username',
+      fields: ['username']
+    },
+    {
+      name: 'idx_users_role',
+      fields: ['role']
+    },
+    {
+      name: 'idx_users_status',
+      fields: ['status']
+    },
+    {
+      name: 'idx_users_created_at',
+      fields: ['created_at']
+    },
+    {
+      name: 'idx_users_role_status',
+      fields: ['role', 'status']
+    },
+    {
+      name: 'idx_users_full_name',
+      fields: ['first_name', 'last_name']
+    }
+  ],
   hooks: {
     // Only needed for password updates in the future
     beforeUpdate: async (user) => {

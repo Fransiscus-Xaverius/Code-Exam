@@ -34,9 +34,10 @@ async function submitToJudge0(submissionId, sourceCode, languageId, testCases) {
         // Validate each test case and log them for debugging
         for (let i = 0; i < testCases.length; i++) {
             const testCase = testCases[i];
-            if (!testCase.input || !testCase.output) {
+            if (testCase.input === undefined || testCase.input === null || 
+                testCase.output === undefined || testCase.output === null) {
                 console.error(`[Judge0] Invalid test case ${i}:`, testCase);
-                throw new Error(`Test case ${i} must have both input and output properties`);
+                throw new Error(`Test case ${i} must have both input and output properties (empty strings are allowed)`);
             }
             console.log(`[Judge0] Test case ${i}:`, {
                 input: testCase.input,

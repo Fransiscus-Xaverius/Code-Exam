@@ -85,7 +85,45 @@ const FrontendSubmission = sequelize.define('FrontendSubmission', {
   tableName: 'frontend_submissions',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_frontend_submissions_user_id',
+      fields: ['user_id']
+    },
+    {
+      name: 'idx_frontend_submissions_problem_id',
+      fields: ['problem_id']
+    },
+    {
+      name: 'idx_frontend_submissions_status',
+      fields: ['status']
+    },
+    {
+      name: 'idx_frontend_submissions_judge_id',
+      fields: ['judge_id']
+    },
+    {
+      name: 'idx_frontend_submissions_created_at',
+      fields: ['created_at']
+    },
+    {
+      name: 'idx_frontend_submissions_judged_at',
+      fields: ['judged_at']
+    },
+    {
+      name: 'idx_frontend_submissions_score',
+      fields: ['score']
+    },
+    {
+      name: 'idx_frontend_submissions_user_problem',
+      fields: ['user_id', 'problem_id']
+    },
+    {
+      name: 'idx_frontend_submissions_problem_status',
+      fields: ['problem_id', 'status']
+    }
+  ]
 });
 
 // Associations

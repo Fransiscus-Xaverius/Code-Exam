@@ -46,7 +46,25 @@ const DiscussionReply = sequelize.define('DiscussionReply', {
   tableName: 'discussion_replies',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_discussion_replies_discussion_id',
+      fields: ['discussion_id']
+    },
+    {
+      name: 'idx_discussion_replies_user_id',
+      fields: ['user_id']
+    },
+    {
+      name: 'idx_discussion_replies_created_at',
+      fields: ['created_at']
+    },
+    {
+      name: 'idx_discussion_replies_discussion_created',
+      fields: ['discussion_id', 'created_at']
+    }
+  ]
 });
 
 // Association with User model

@@ -111,7 +111,37 @@ const FrontendProblem = sequelize.define('FrontendProblem', {
   tableName: 'frontend_problems',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_frontend_problems_difficulty',
+      fields: ['difficulty']
+    },
+    {
+      name: 'idx_frontend_problems_points',
+      fields: ['points']
+    },
+    {
+      name: 'idx_frontend_problems_created_by',
+      fields: ['created_by']
+    },
+    {
+      name: 'idx_frontend_problems_created_at',
+      fields: ['created_at']
+    },
+    {
+      name: 'idx_frontend_problems_time_limit',
+      fields: ['time_limit_minutes']
+    },
+    {
+      name: 'idx_frontend_problems_title',
+      fields: ['title']
+    },
+    {
+      name: 'idx_frontend_problems_difficulty_points',
+      fields: ['difficulty', 'points']
+    }
+  ]
 });
 
 // Association with User model

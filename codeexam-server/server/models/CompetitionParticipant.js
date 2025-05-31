@@ -11,7 +11,26 @@ const CompetitionParticipant = sequelize.define('CompetitionParticipant', {
 }, {
   tableName: 'competition_participants',
   timestamps: false,
-  underscored: true
+  underscored: true,
+  indexes: [
+    {
+      name: 'idx_comp_participants_user_id',
+      fields: ['user_id']
+    },
+    {
+      name: 'idx_comp_participants_competition_id',
+      fields: ['competition_id']
+    },
+    {
+      name: 'idx_comp_participants_registered_at',
+      fields: ['registered_at']
+    },
+    {
+      name: 'idx_comp_participants_unique',
+      fields: ['user_id', 'competition_id'],
+      unique: true
+    }
+  ]
 });
 
 // Define associations

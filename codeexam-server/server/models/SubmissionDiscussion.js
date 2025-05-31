@@ -56,7 +56,29 @@ const SubmissionDiscussion = sequelize.define('SubmissionDiscussion', {
   tableName: 'submission_discussions',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [
+    {
+      name: 'idx_submission_discussions_submission_id',
+      fields: ['submission_id']
+    },
+    {
+      name: 'idx_submission_discussions_user_id',
+      fields: ['user_id']
+    },
+    {
+      name: 'idx_submission_discussions_created_at',
+      fields: ['created_at']
+    },
+    {
+      name: 'idx_submission_discussions_title',
+      fields: ['title']
+    },
+    {
+      name: 'idx_submission_discussions_user_created',
+      fields: ['user_id', 'created_at']
+    }
+  ]
 });
 
 // Association with User model
