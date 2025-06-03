@@ -6,6 +6,8 @@ const CompetitionProblem = require('../models/CompetitionProblem');
 const Submission = require('../models/Submission');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
+const { Sequelize } = require('sequelize');
+const jwt = require('jsonwebtoken');
 
 // @desc    Create a new competition
 // @route   POST /api/competitions
@@ -90,20 +92,46 @@ exports.getCompetitions = async (req, res, next) => {
     const limit = parseInt(req.query.limit, 10) || 10;
     const startIndex = (page - 1) * limit;
     
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+
     // Add filtering
     const filter = {};
-    
-    // If not admin, only show public competitions
     if (!req.user || req.user.role !== 'admin') {
       filter.is_public = true;
     }
-    
+
+    // Build attributes array with isRegistered subquery
+    const attributes = {
+      include: []
+    };
+    console.log(req.user)
+    if (req.user) {
+      attributes.include.push([
+        Sequelize.literal(`(
+          SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END
+          FROM competition_participants
+          WHERE competition_participants.competition_id = Competition.id
+          AND competition_participants.user_id = ${req.user.id}
+        )`),
+        'isRegistered'
+      ]);
+    } else {
+      attributes.include.push([
+        Sequelize.literal('false'),
+        'isRegistered'
+      ]);
+    }
+
     // Get competitions with count
     const { count, rows: competitions } = await Competition.findAndCountAll({
       where: filter,
       limit,
       offset: startIndex,
       order: [['start_time', 'ASC']],
+      attributes,
       include: [
         {
           model: User,
@@ -112,29 +140,19 @@ exports.getCompetitions = async (req, res, next) => {
         }
       ]
     });
-    
+
     // Pagination result
     const pagination = {};
-    
-    // Calculate total pages
     const totalPages = Math.ceil(count / limit);
     
-    // Add next page if not on last page
     if (page < totalPages) {
-      pagination.next = {
-        page: page + 1,
-        limit
-      };
+      pagination.next = { page: page + 1, limit };
     }
     
-    // Add previous page if not on first page
     if (page > 1) {
-      pagination.prev = {
-        page: page - 1,
-        limit
-      };
+      pagination.prev = { page: page - 1, limit };
     }
-    
+
     res.status(200).json({
       success: true,
       count,
@@ -896,21 +914,21 @@ exports.getCompetitionLeaderboard = async (req, res, next) => {
 
     // Get participants with their total points - using score instead of points
     const leaderboard = await sequelize.query(`
-      SELECT 
+      SELECT
         cp.user_id,
         u.username,
-        SUM(CASE WHEN s.status = 'accepted' THEN s.score ELSE 0 END) as total_points,
+        SUM(DISTINCT CASE WHEN s.status = 'accepted' THEN s.score ELSE 0 END) as total_points,
         COUNT(DISTINCT CASE WHEN s.status = 'accepted' THEN s.problem_id END) as problems_solved,
         MAX(s.created_at) as last_submission_time
-      FROM 
+      FROM
         competition_participants cp
         LEFT JOIN users u ON cp.user_id = u.id
         LEFT JOIN submissions s ON cp.user_id = s.user_id AND s.competition_id = cp.competition_id
-      WHERE 
+      WHERE
         cp.competition_id = :competitionId
-      GROUP BY 
+      GROUP BY
         cp.user_id, u.username
-      ORDER BY 
+      ORDER BY
         total_points DESC,
         problems_solved DESC,
         last_submission_time ASC
@@ -1032,7 +1050,7 @@ exports.submitCompetitionSolution = async (req, res, next) => {
       },
       include: {
         model: Problem,
-        attributes: ['id', 'points', 'test_cases', 'hidden_test_cases']
+        attributes: ['id', 'points', 'test_cases', 'hidden_test_cases', 'time_limit_ms', 'memory_limit']
       }
     });
 
@@ -1056,7 +1074,8 @@ exports.submitCompetitionSolution = async (req, res, next) => {
 
     // Prepare test cases - prioritize hidden test cases for formal evaluation
     const testCases = competitionProblem.Problem.hidden_test_cases || competitionProblem.Problem.test_cases;
-    
+    const timeLimit = ((parseInt(competitionProblem.Problem.time_limit_ms) || 1000) / 1000).toFixed(1);
+    const memoryLimit = competitionProblem.Problem.memory_limit_kb || 128000; // Default to 128 MB if not set
     if (!testCases || !Array.isArray(testCases) || testCases.length === 0) {
       await submission.update({ 
         status: 'error', 
@@ -1070,7 +1089,7 @@ exports.submitCompetitionSolution = async (req, res, next) => {
     }
     
     // Process submission for evaluation
-    submitToJudge0(submission.id, code, language, testCases);
+    submitToJudge0(submission.id, code, language, testCases, timeLimit, memoryLimit);
 
     res.json({
       success: true,

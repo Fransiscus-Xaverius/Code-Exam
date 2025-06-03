@@ -21,7 +21,7 @@ function decodeFromBase64(encoded) {
     }
 }
 
-async function submitToJudge0(submissionId, sourceCode, languageId, testCases) {
+async function submitToJudge0(submissionId, sourceCode, languageId, testCases, timeLimit, memoryLimit) {
     try {
         console.log(`[Judge0] Submitting code for submission ${submissionId} with language ${languageId}`);
         console.log(`[Judge0] Test cases count: ${testCases.length}`);
@@ -45,6 +45,8 @@ async function submitToJudge0(submissionId, sourceCode, languageId, testCases) {
             });
         }
 
+        console.log(timeLimit, memoryLimit) 
+
         // Prepare submissions array for batch submission with base64 encoding
         const submissions = testCases.map((testCase, index) => {            
             return {
@@ -53,8 +55,8 @@ async function submitToJudge0(submissionId, sourceCode, languageId, testCases) {
                 stdin: encodeToBase64(testCase.input),
                 expected_output: encodeToBase64(testCase.output),
                 // Add CPU and memory limits based on problem constraints
-                cpu_time_limit: "2.0", // 2 seconds as string
-                memory_limit: "128000", // 128MB in KB as string
+                cpu_time_limit: timeLimit, // 2 seconds as string
+                memory_limit: `${memoryLimit}`, // 128MB in KB as string
                 // Add additional Judge0 parameters for self-hosted instance
                 wall_time_limit: "5.0", // 5 seconds wall time as string
                 enable_per_process_and_thread_time_limit: false,

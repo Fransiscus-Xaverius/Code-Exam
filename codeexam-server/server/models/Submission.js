@@ -192,17 +192,17 @@ const Submission = sequelize.define('Submission', {
 });
 
 // Associations
-Submission.belongsTo(User, {
+Submission.belongsTo(require('./User'), {
   foreignKey: 'user_id',
   as: 'user'
 });
 
-Submission.belongsTo(Problem, {
+Submission.belongsTo(require('./Problem'), {
   foreignKey: 'problem_id',
   as: 'problem'
 });
 
-Submission.belongsTo(User, {
+Submission.belongsTo(require('./User'), {
   foreignKey: 'judge_id',
   as: 'judge'
 });

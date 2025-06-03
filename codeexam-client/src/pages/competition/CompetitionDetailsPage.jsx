@@ -57,9 +57,19 @@ const CompetitionDetailsPage = () => {
     user_id: ''
   });
 
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [userRank, setUserRank] = useState(null);
+
   useEffect(() => {
     fetchCompetitionData();
   }, [id]);
+
+  useEffect(() => {
+    if (activeTab === 'leaderboard' && competition?.leaderboard_visible) {
+      fetchLeaderboard();
+    }
+  }, [activeTab, id, token]);
 
   useEffect(() => {
     if (activeTab === 'submissions' && (user?.role === 'admin' || user?.role === 'judge')) {
@@ -110,6 +120,29 @@ const CompetitionDetailsPage = () => {
     }
   };
 
+  const fetchLeaderboard = async () => {
+    try {
+      setLeaderboardLoading(true);
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
+      
+      const response = await API.get(`/api/competitions/${id}/leaderboard`, { headers });
+      
+      if (response.data.success) {
+        const leaderboardData = response.data.data || [];
+        setLeaderboard(leaderboardData);
+        
+        // Find current user in leaderboard
+        const userEntry = leaderboardData.find(entry => entry.isCurrentUser);
+        setUserRank(userEntry ? userEntry.rank : null);
+      }
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err);
+      // We don't set an error state here as this is not critical
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
+
   const fetchCompetitionData = async () => {
     try {
       setLoading(true);
@@ -118,17 +151,16 @@ const CompetitionDetailsPage = () => {
       const requests = [
         API.get(`/api/competitions/${id}`, { headers })
       ];
-
-      if (user?.role === 'admin' || user?.role === 'judge') {
-        requests.push(
-          API.get(`/api/competitions/${id}/participants`, { headers })
-        );
-      }
+    
+      requests.push(
+        API.get(`/api/competitions/${id}/participants`, { headers })
+      );
 
       const [competitionRes, participantsRes] = await Promise.all(requests);
 
       setCompetition(competitionRes.data.data);
       if (participantsRes) {
+        console.log(participantsRes);
         setParticipants(participantsRes.data.data || []);
         setRegistered((participantsRes.data.data || []).some(p => p.user_id === user?.id));
       }
@@ -686,16 +718,91 @@ const CompetitionDetailsPage = () => {
             {activeTab === 'leaderboard' && competition.leaderboard_visible && (
               <Card>
                 <div className="px-6 py-5 border-b border-gray-200">
-                  <h2 className="text-lg font-medium text-gray-900">Leaderboard</h2>
+                  <h2 className="text-lg font-medium text-gray-900">Competition Leaderboard</h2>
                 </div>
                 <div className="p-6">
-                  <div className="text-center py-12">
-                    <Trophy className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">Leaderboard Coming Soon</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      The leaderboard will be available once the competition begins.
-                    </p>
-                  </div>
+                  {leaderboardLoading ? (
+                    <div className="flex justify-center items-center p-8">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : leaderboard.length === 0 ? (
+                    <div className="bg-gray-50 rounded-lg p-8 text-center">
+                      <Trophy className="mx-auto h-12 w-12 text-gray-400" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No data available</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        The leaderboard will update as participants submit solutions.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Rank
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              User
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Problems Solved
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total Points
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leaderboard.map((entry, idx) => (
+                            <tr 
+                              key={entry.user_id} 
+                              className={`${entry.isCurrentUser ? 'bg-blue-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  {entry.rank <= 3 ? (
+                                    <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                                      entry.rank === 1 ? 'bg-yellow-100' : 
+                                      entry.rank === 2 ? 'bg-gray-100' : 'bg-amber-100'
+                                    }`}>
+                                      <Award size={16} className={`${
+                                        entry.rank === 1 ? 'text-yellow-500' : 
+                                        entry.rank === 2 ? 'text-gray-500' : 'text-amber-600'
+                                      }`} />
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm font-medium px-2">#{entry.rank}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center font-medium text-blue-700">
+                                    {entry.username ? entry.username.charAt(0).toUpperCase() : 'U'}
+                                  </div>
+                                  <span className={`ml-3 font-medium ${entry.isCurrentUser ? 'text-blue-700' : 'text-gray-900'}`}>
+                                    {entry.username} {entry.isCurrentUser && '(You)'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <Check size={16} className="text-green-500 mr-2" />
+                                  <span>{entry.problems_solved || 0}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <Trophy size={16} className="text-blue-500 mr-2" />
+                                  <span className="font-medium">{entry.total_points || 0}</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </Card>
             )}

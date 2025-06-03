@@ -7,6 +7,8 @@ const sequelize = require('../config/database');
 const { submitToJudge0 } = require('../job/judge0');
 const CompetitionProblem = require('../models/CompetitionProblem');
 const CompetitionParticipant = require('../models/CompetitionParticipant');
+const Sequelize = require('sequelize');
+const { Op } = Sequelize;
 
 // @desc    Submit a solution to a problem
 // @route   POST /api/submissions
@@ -74,7 +76,13 @@ exports.createSubmission = async (req, res, next) => {
         message: 'Internal server error: Problem is missing test cases.'
       });
     }
-    submitToJudge0(submission.id, code, language, problem.hidden_test_cases);
+    console.log('timelimit:', problem.time_limit_ms);
+    console.log('memory limit:', problem.memory_limit_kb);
+    const timeLimit = ((parseInt(problem.time_limit_ms) || 1000) / 1000).toFixed(1);
+    const memoryLimit = problem.memory_limit_kb || 128000; 
+
+    // Submit to judge system
+    submitToJudge0(submission.id, code, language, problem.hidden_test_cases, timeLimit, memoryLimit);
 
     console.log('Submission process completed successfully');
     res.status(201).json({
@@ -216,9 +224,13 @@ exports.submit = async (req, res, next) => {
         message: 'Internal server error: Problem is missing test cases.'
       });
     }
+    console.log('timelimit:', problem.time_limit_ms);
+    console.log('memory limit:', problem.memory_limit_kb);
+    const timeLimit = ((parseInt(problem.time_limit_ms) || 1000) / 1000).toFixed(1);
+    const memoryLimit = problem.memory_limit_kb || 128000; 
 
     // Submit to judge system
-    submitToJudge0(submission.id, code, language, problem.hidden_test_cases);
+    submitToJudge0(submission.id, code, language, problem.hidden_test_cases, timeLimit, memoryLimit);
 
     console.log('Formal submission process completed successfully');
     res.status(201).json({
@@ -255,70 +267,177 @@ exports.getPublicSubmissions = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const startIndex = (page - 1) * limit;
-
-    // Add filtering but only for published submissions
+    
+    // Base filtering - only published submissions
     const filter = {
-      is_published: 1,
-      // status: 'accepted' // Only show accepted submissions
+      is_published: 1
     };
-
-    // Additional filters
+    
+    // Filter parameter from frontend ('all', 'accepted', 'my')
+    const filterType = req.query.filter;
+    if (filterType === 'accepted') {
+      filter.status = 'accepted';
+    } else if (filterType === 'my' && req.user) {
+      filter.user_id = req.user.id;
+    }
+    
+    // Additional specific filters
     if (req.query.problem_id) {
       filter.problem_id = req.query.problem_id;
     }
-
+    
     if (req.query.language) {
       filter.language = req.query.language;
     }
-
+    
     if (req.query.user_id) {
       filter.user_id = req.query.user_id;
     }
-
+    
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+    
+    // Search functionality
+    let searchCondition = {};
+    if (req.query.search) {
+      const searchTerm = req.query.search.trim();
+      if (searchTerm) {
+        searchCondition = {
+          [Op.or]: [
+            { '$problem.title$': { [Op.like]: `%${searchTerm}%` } },
+            { '$submission_discussions.title$': { [Op.like]: `%${searchTerm}%` } },
+            { '$submission_discussions.content$': { [Op.like]: `%${searchTerm}%` } },
+            { '$user.username$': { [Op.like]: `%${searchTerm}%` } },
+            { language: { [Op.like]: `%${searchTerm}%` } }
+          ]
+        };
+      }
+    }
+    
+    // Combine base filter with search condition
+    const whereCondition = {
+      ...filter,
+      ...searchCondition
+    };
+    
+    // Sorting logic
+    let orderBy = [['submitted_at', 'DESC']]; // default
+    const sortType = req.query.sort;
+    const tabType = req.query.tab;
+    
+    // Handle tab-specific sorting first, then apply sort parameter
+    if (tabType === 'popular') {
+      // Popular submissions - those with high engagement in the last 30 days
+      orderBy = [
+        [Sequelize.literal(`(
+          COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id), 0) +
+          COALESCE((SELECT COUNT(*) FROM discussion_replies WHERE discussion_replies.discussion_id = Submission.id), 0)
+        )`), 'DESC'],
+        ['submitted_at', 'DESC']
+      ];
+      
+      // Add date filter for popularity (last 30 days)
+      whereCondition.submitted_at = {
+        [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      };
+    } else if (tabType === 'trending') {
+      // Trending: submissions with recent activity (likes/comments in last 7 days)
+      orderBy = [
+        [Sequelize.literal(`(
+          COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id AND submission_likes.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0) +
+          COALESCE((SELECT COUNT(*) FROM discussion_replies WHERE discussion_replies.discussion_id = Submission.id AND discussion_replies.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)
+        )`), 'DESC'],
+        ['submitted_at', 'DESC']
+      ];
+    } else {
+      // Apply sort parameter for 'recent' tab or when no tab specified
+      switch (sortType) {
+        case 'newest':
+          orderBy = [['submitted_at', 'DESC']];
+          break;
+        case 'oldest':
+          orderBy = [['submitted_at', 'ASC']];
+          break;
+        case 'most_liked':
+          orderBy = [
+            [Sequelize.literal('COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id), 0)'), 'DESC'],
+            ['submitted_at', 'DESC']
+          ];
+          break;
+        case 'most_discussed':
+          orderBy = [
+            [Sequelize.literal('COALESCE((SELECT COUNT(*) FROM discussion_replies WHERE discussion_replies.discussion_id = Submission.id), 0)'), 'DESC'],
+            ['submitted_at', 'DESC']
+          ];
+          break;
+        default:
+          orderBy = [['submitted_at', 'DESC']];
+      }
+    }
+    
+    // Build include array
+    const includeArray = [
+      {
+        model: User,
+        as: 'user',
+        attributes: ['id', 'username']
+      },
+      {
+        model: Problem,
+        as: 'problem',
+        attributes: ['id', 'title', 'difficulty']
+      },
+      {
+        model: SubmissionDiscussion,
+        as: 'submission_discussions',
+        attributes: ['title', 'content', 'created_at', 'updated_at']
+      }
+    ];
+    
     // Get submissions with count
-    const { count, rows: submissions, submissionDiscussions } = await Submission.findAndCountAll({
-      where: filter,
+    const { count, rows: submissions } = await Submission.findAndCountAll({
+      where: whereCondition,
       limit,
       offset: startIndex,
-      order: [['submitted_at', 'DESC']],
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'username']
-        },
-        {
-          model: Problem,
-          as: 'problem',
-          attributes: ['id', 'title', 'difficulty']
-        },
-        {
-          model: SubmissionDiscussion,
-          as: 'submission_discussions',
-          attributes: ['title', 'content', 'created_at', 'updated_at']
-        }
-      ],
+      order: orderBy,
+      include: includeArray,
       attributes: {
+        include: [
+          // Add virtual fields for likes and comment counts
+          [
+            Sequelize.literal('COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id), 0)'),
+            'likes'
+          ],
+          [
+            Sequelize.literal('COALESCE((SELECT COUNT(*) FROM discussion_replies WHERE discussion_replies.discussion_id = Submission.id), 0)'),
+            'commentCount'
+          ]
+        ],
         exclude: ['error_message'] // Don't send error messages
-      }
+      },
+      distinct: true, // Important when using includes to avoid duplicate counting
+      subQuery: false
     });
-
+    
     // Pagination result
     const pagination = {};
-    if (startIndex + limit < count) {
+    const totalPages = Math.ceil(count / limit);
+    
+    if (page < totalPages) {
       pagination.next = {
         page: page + 1,
         limit
       };
     }
-
-    if (startIndex > 0) {
+    
+    if (page > 1) {
       pagination.prev = {
         page: page - 1,
         limit
       };
     }
-
+    
     res.status(200).json({
       success: true,
       count,
@@ -326,6 +445,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
       submissions
     });
   } catch (error) {
+    console.error('Error in getPublicSubmissions:', error);
     next(error);
   }
 };
