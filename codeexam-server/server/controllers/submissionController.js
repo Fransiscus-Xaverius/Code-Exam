@@ -10,6 +10,18 @@ const CompetitionParticipant = require('../models/CompetitionParticipant');
 const Sequelize = require('sequelize');
 const { Op } = Sequelize;
 
+// Helper function to get submission for like functionality
+exports.getSubmissionForLike = async (submissionId) => {
+  try {
+    return await Submission.findByPk(submissionId, {
+      attributes: ['id', 'is_published', 'status']
+    });
+  } catch (error) {
+    console.error('Error getting submission for like:', error);
+    return null;
+  }
+};
+
 // @desc    Submit a solution to a problem
 // @route   POST /api/submissions
 // @access  Private
@@ -332,7 +344,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
       orderBy = [
         [Sequelize.literal(`(
           COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id), 0) +
-          COALESCE((SELECT COUNT(*) FROM discussion_replies WHERE discussion_replies.discussion_id = Submission.id), 0)
+          COALESCE((SELECT COUNT(*) FROM discussion_replies dr JOIN submission_discussions sd ON dr.discussion_id = sd.id WHERE sd.submission_id = Submission.id), 0)
         )`), 'DESC'],
         ['submitted_at', 'DESC']
       ];
@@ -346,7 +358,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
       orderBy = [
         [Sequelize.literal(`(
           COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id AND submission_likes.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0) +
-          COALESCE((SELECT COUNT(*) FROM discussion_replies WHERE discussion_replies.discussion_id = Submission.id AND discussion_replies.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)
+          COALESCE((SELECT COUNT(*) FROM discussion_replies dr JOIN submission_discussions sd ON dr.discussion_id = sd.id WHERE sd.submission_id = Submission.id AND dr.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)
         )`), 'DESC'],
         ['submitted_at', 'DESC']
       ];
@@ -367,7 +379,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
           break;
         case 'most_discussed':
           orderBy = [
-            [Sequelize.literal('COALESCE((SELECT COUNT(*) FROM discussion_replies WHERE discussion_replies.discussion_id = Submission.id), 0)'), 'DESC'],
+            [Sequelize.literal('COALESCE((SELECT COUNT(*) FROM discussion_replies dr JOIN submission_discussions sd ON dr.discussion_id = sd.id WHERE sd.submission_id = Submission.id), 0)'), 'DESC'],
             ['submitted_at', 'DESC']
           ];
           break;
@@ -391,9 +403,34 @@ exports.getPublicSubmissions = async (req, res, next) => {
       {
         model: SubmissionDiscussion,
         as: 'submission_discussions',
-        attributes: ['title', 'content', 'created_at', 'updated_at']
+        attributes: ['id', 'title', 'content', 'created_at', 'updated_at'],
+        required: false
       }
     ];
+    
+    // Build attributes with virtual fields
+    const attributesConfig = {
+      include: [
+        // Add virtual fields for likes and comment counts using proper table relationships
+        [
+          Sequelize.literal('COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id), 0)'),
+          'likes'
+        ],
+        [
+          Sequelize.literal('COALESCE((SELECT COUNT(*) FROM discussion_replies dr JOIN submission_discussions sd ON dr.discussion_id = sd.id WHERE sd.submission_id = Submission.id), 0)'),
+          'commentCount'
+        ]
+      ],
+      exclude: ['error_message'] // Don't send error messages
+    };
+
+    // Add user like status if user is authenticated
+    if (req.user) {
+      attributesConfig.include.push([
+        Sequelize.literal(`COALESCE((SELECT 1 FROM submission_likes WHERE submission_likes.submission_id = Submission.id AND submission_likes.user_id = ${req.user.id}), 0)`),
+        'isLiked'
+      ]);
+    }
     
     // Get submissions with count
     const { count, rows: submissions } = await Submission.findAndCountAll({
@@ -402,20 +439,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
       offset: startIndex,
       order: orderBy,
       include: includeArray,
-      attributes: {
-        include: [
-          // Add virtual fields for likes and comment counts
-          [
-            Sequelize.literal('COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id), 0)'),
-            'likes'
-          ],
-          [
-            Sequelize.literal('COALESCE((SELECT COUNT(*) FROM discussion_replies WHERE discussion_replies.discussion_id = Submission.id), 0)'),
-            'commentCount'
-          ]
-        ],
-        exclude: ['error_message'] // Don't send error messages
-      },
+      attributes: attributesConfig,
       distinct: true, // Important when using includes to avoid duplicate counting
       subQuery: false
     });
@@ -455,6 +479,29 @@ exports.getPublicSubmissions = async (req, res, next) => {
 // @access Public (no authentication required)
 exports.getPublicSubmission = async (req, res, next) => {
   try {
+    // Build attributes with virtual fields
+    const attributesConfig = {
+      include: [
+        // Add virtual fields for likes and comment counts
+        [
+          Sequelize.literal('COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id), 0)'),
+          'likes'
+        ],
+        [
+          Sequelize.literal('COALESCE((SELECT COUNT(*) FROM discussion_replies dr JOIN submission_discussions sd ON dr.discussion_id = sd.id WHERE sd.submission_id = Submission.id), 0)'),
+          'commentCount'
+        ]
+      ]
+    };
+
+    // Add user like status if user is authenticated
+    if (req.user) {
+      attributesConfig.include.push([
+        Sequelize.literal(`COALESCE((SELECT 1 FROM submission_likes WHERE submission_likes.submission_id = Submission.id AND submission_likes.user_id = ${req.user.id}), 0)`),
+        'isLiked'
+      ]);
+    }
+
     const submission = await Submission.findByPk(req.params.id, {
       include: [
         {
@@ -467,7 +514,8 @@ exports.getPublicSubmission = async (req, res, next) => {
           as: 'problem',
           attributes: ['id', 'title', 'difficulty', 'points']
         }
-      ]
+      ],
+      attributes: attributesConfig
     });
 
     if (!submission) {
@@ -485,7 +533,13 @@ exports.getPublicSubmission = async (req, res, next) => {
       });
     }
 
-    // Return submission details
+    // Get submission discussion (if exists)
+    const discussion = await SubmissionDiscussion.findOne({
+      where: { submission_id: submission.id },
+      attributes: ['id', 'title', 'content', 'created_at', 'updated_at']
+    });
+
+    // Return submission details with likes, comments, and discussion
     res.status(200).json({
       success: true,
       submission: {
@@ -497,7 +551,11 @@ exports.getPublicSubmission = async (req, res, next) => {
         score: submission.score,
         runtime_ms: submission.runtime_ms,
         memory_kb: submission.memory_kb,
-        submitted_at: submission.submitted_at
+        submitted_at: submission.submitted_at,
+        likes: submission.getDataValue('likes'),
+        commentCount: submission.getDataValue('commentCount'),
+        isLiked: req.user ? Boolean(submission.getDataValue('isLiked')) : false,
+        discussion: discussion
       }
     });
   } catch (error) {

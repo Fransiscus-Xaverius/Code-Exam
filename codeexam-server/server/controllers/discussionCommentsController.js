@@ -8,6 +8,7 @@ const DiscussionReply = require('../models/DiscussionReply');
 const SubmissionDiscussion = require('../models/SubmissionDiscussion');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
+const SubmissionLike = require('../models/SubmissionLike');
 
 class DiscussionCommentsController {
   // Get all replies for a specific discussion
@@ -128,45 +129,94 @@ class DiscussionCommentsController {
   }
 
   // Add a like submission API method
-  async likeSubmission(req, res) {
-    try {
-      const discussionId = req.params.discussionId;
-      const userId = req.user.id; // Assuming user ID is added by auth middleware
-      
-      // Verify discussion exists
-      const discussion = await SubmissionDiscussion.findOne({
-        where: { submission_id: discussionId }
-      });
-      if (!discussion) {
-        return res.status(404).json({ 
-          success: false,
-          message: 'Discussion not found' 
-        });
-      }
-      
-      // Check if user already liked this submission
-      // This would require a new model/table for tracking likes
-      // For now, we'll just increment the like count
-      
-      // Update like count in the discussion
-      await SubmissionDiscussion.increment('likes', { 
-        by: 1,
-        where: { id: discussionId } 
-      });
-      
-      res.status(200).json({ 
-        success: true,
-        message: 'Submission liked successfully'
-      });
-    } catch (error) {
-      console.error('Error liking submission:', error);
-      res.status(500).json({ 
+// Add a like submission API method
+async likeSubmission(req, res) {
+  try {
+    const discussionId = req.params.discussionId;
+    const userId = req.user.id; // Assuming user ID is added by auth middleware
+    
+    // Verify discussion exists and get submission_id
+    const discussion = await SubmissionDiscussion.findOne({
+      where: { submission_id: discussionId }
+    });
+    if (!discussion) {
+      return res.status(404).json({ 
         success: false,
-        message: 'Failed to like submission',
-        error: error.message 
+        message: 'Discussion not found' 
       });
     }
+    
+    // Check if submission is published
+    const Submission = require('../models/Submission');
+    const submission = await Submission.findByPk(discussionId);
+    if (!submission || !submission.is_published) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot like unpublished submission'
+      });
+    }
+    
+    // Check if user already liked this submission
+    const SubmissionLike = require('../models/SubmissionLike');
+    const existingLike = await SubmissionLike.findOne({
+      where: {
+        submission_id: discussionId,
+        user_id: userId
+      }
+    });
+    
+    if (existingLike) {
+      // Unlike - remove the like
+      await existingLike.destroy();
+      
+      // Get updated like count
+      const likeCount = await SubmissionLike.count({
+        where: { submission_id: discussionId }
+      });
+      
+      return res.status(200).json({ 
+        success: true,
+        message: 'Submission unliked',
+        isLiked: false,
+        likeCount
+      });
+    } else {
+      // Like - add the like
+      await SubmissionLike.create({
+        submission_id: discussionId,
+        user_id: userId
+      });
+      
+      // Get updated like count
+      const likeCount = await SubmissionLike.count({
+        where: { submission_id: discussionId }
+      });
+      
+      return res.status(200).json({ 
+        success: true,
+        message: 'Submission liked',
+        isLiked: true,
+        likeCount
+      });
+    }
+  } catch (error) {
+    console.error('Error liking submission:', error);
+    
+    // Handle unique constraint errors
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({
+        success: false,
+        message: 'Like status conflict'
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to like submission',
+      error: error.message 
+    });
   }
+}
 
   // Update a reply
   async updateReply(req, res) {

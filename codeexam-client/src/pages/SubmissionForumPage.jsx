@@ -45,7 +45,14 @@ const SubmissionsForumPage = () => {
           params: { filter, sort, search: searchQuery, tab: activeTab }
         });
         
-        setSubmissions(response.data.submissions || []);
+        // Ensure isLiked is properly set for each submission
+        const submissionsWithLikeStatus = (response.data.submissions || []).map(submission => ({
+          ...submission,
+          isLiked: Boolean(submission.isLiked), // Convert to boolean
+          likes: submission.likes || 0 // Ensure likes is a number
+        }));
+        
+        setSubmissions(submissionsWithLikeStatus);
         setError(null);
       } catch (err) {
         console.error('Error fetching submissions:', err);
@@ -125,13 +132,22 @@ const SubmissionsForumPage = () => {
 
   const likeSubmission = async (submissionId) => {
     try {
-      // Updated endpoint path
-      await API.post(`/api/comments/discussion/${submissionId}/like`);
+      const token = localStorage.getItem('codeexam_token');
       
+      // Use the existing like endpoint
+      const response = await API.post(`/api/comments/discussion/${submissionId}/like`, {}, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+      
+      // Update the submission state with the response data
       setSubmissions(prev => 
         prev.map(sub => 
           sub.id === submissionId 
-            ? { ...sub, likes: sub.likes + 1 } 
+            ? { 
+                ...sub, 
+                likes: response.data.likeCount,
+                isLiked: response.data.isLiked 
+              } 
             : sub
         )
       );
@@ -139,7 +155,6 @@ const SubmissionsForumPage = () => {
       console.error('Error liking submission:', err);
     }
   };
-
   // Utility Functions
   const formatRelativeTime = (dateString) => {
     const date = new Date(dateString);
@@ -169,15 +184,112 @@ const SubmissionsForumPage = () => {
   };
 
   const LanguageBadge = ({ language }) => {
-    const colorClass = 
-      language === 'JavaScript' ? 'bg-yellow-400 text-black' : 
-      language === 'Python' ? 'bg-blue-500 text-white' : 
-      language === 'Java' ? 'bg-orange-500 text-white' : 
-      language === 'C++' ? 'bg-purple-500 text-white' : 'bg-gray-500 text-white';
-    
+    // Language ID to name mapping based on Judge0
+    const languageMap = {
+      45: 'Assembly',
+      46: 'Bash',
+      47: 'Basic',
+      104: 'C',
+      110: 'C',
+      75: 'C',
+      76: 'C++',
+      103: 'C',
+      105: 'C++',
+      48: 'C',
+      52: 'C++',
+      49: 'C',
+      53: 'C++',
+      50: 'C',
+      54: 'C++',
+      86: 'Clojure',
+      51: 'C#',
+      77: 'COBOL',
+      55: 'Common Lisp',
+      90: 'Dart',
+      56: 'D',
+      57: 'Elixir',
+      58: 'Erlang',
+      44: 'Executable',
+      87: 'F#',
+      59: 'Fortran',
+      60: 'Go',
+      95: 'Go',
+      106: 'Go',
+      107: 'Go',
+      88: 'Groovy',
+      61: 'Haskell',
+      96: 'JavaFX',
+      91: 'Java',
+      62: 'Java',
+      63: 'JavaScript',
+      93: 'JavaScript',
+      97: 'JavaScript',
+      102: 'JavaScript',
+      78: 'Kotlin',
+      111: 'Kotlin',
+      64: 'Lua',
+      89: 'Multi-file',
+      79: 'Objective-C',
+      65: 'OCaml',
+      66: 'Octave',
+      67: 'Pascal',
+      85: 'Perl',
+      68: 'PHP',
+      98: 'PHP',
+      43: 'Plain Text',
+      69: 'Prolog',
+      70: 'Python',
+      92: 'Python',
+      100: 'Python',
+      109: 'Python',
+      71: 'Python',
+      80: 'R',
+      99: 'R',
+      72: 'Ruby',
+      73: 'Rust',
+      108: 'Rust',
+      81: 'Scala',
+      82: 'SQL',
+      83: 'Swift',
+      74: 'TypeScript',
+      94: 'TypeScript',
+      101: 'TypeScript',
+      84: 'Visual Basic.Net'
+    };
+  
+    // Convert language ID to name if it's a number, otherwise use as is
+    const languageName = typeof language === 'number' ? languageMap[language] || 'Unknown' : language;
+  
+    // Determine color class based on language name
+    const getColorClass = (lang) => {
+      if (!lang) return 'bg-gray-500 text-white';
+      
+      const lowerLang = lang.toLowerCase();
+      
+      if (lowerLang.includes('javascript')) return 'bg-yellow-400 text-black';
+      if (lowerLang.includes('python')) return 'bg-blue-500 text-white';
+      if (lowerLang.includes('java') && !lowerLang.includes('script')) return 'bg-orange-500 text-white';
+      if (lowerLang.includes('c++')) return 'bg-purple-500 text-white';
+      if (lowerLang === 'c') return 'bg-blue-600 text-white';
+      if (lowerLang.includes('c#')) return 'bg-green-600 text-white';
+      if (lowerLang.includes('typescript')) return 'bg-blue-400 text-white';
+      if (lowerLang.includes('go')) return 'bg-cyan-500 text-white';
+      if (lowerLang.includes('rust')) return 'bg-orange-600 text-white';
+      if (lowerLang.includes('php')) return 'bg-indigo-500 text-white';
+      if (lowerLang.includes('ruby')) return 'bg-red-500 text-white';
+      if (lowerLang.includes('swift')) return 'bg-orange-400 text-white';
+      if (lowerLang.includes('kotlin')) return 'bg-purple-400 text-white';
+      if (lowerLang.includes('dart')) return 'bg-teal-500 text-white';
+      if (lowerLang.includes('scala')) return 'bg-red-600 text-white';
+      
+      return 'bg-gray-500 text-white';
+    };
+  
+    const colorClass = getColorClass(languageName);
+  
     return (
       <span className={`${colorClass} text-xs px-2 py-1 rounded-full`}>
-        {language}
+        {languageName}
       </span>
     );
   };
@@ -251,7 +363,7 @@ const SubmissionsForumPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <LanguageBadge language={submission.language} />
+                  <LanguageBadge language={parseInt(submission.language)} />
                   <StatusBadge status={submission.status} />
                 </div>
               </div>
@@ -265,11 +377,11 @@ const SubmissionsForumPage = () => {
                   </>
                 )}
                 <div 
-                  className="flex items-center cursor-pointer" 
+                  className={`flex items-center cursor-pointer ${submission.isLiked ? 'text-blue-600' : 'text-gray-600'}`}
                   onClick={() => likeSubmission(submission.id)}
                 >
-                  <ThumbsUp className="h-4 w-4 mr-1" />
-                  <span>{submission.likes}</span>
+                  <ThumbsUp className={`h-4 w-4 mr-1 ${submission.isLiked ? 'fill-current' : ''}`} />
+                  <span>{submission.likes || 0}</span>
                 </div>
                 <div 
                   className="flex items-center cursor-pointer" 
