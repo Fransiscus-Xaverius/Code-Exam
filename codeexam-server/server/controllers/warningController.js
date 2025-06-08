@@ -5,12 +5,15 @@ const nodemailer = require('nodemailer'); // You'll need to install and configur
 
 // Email configuration (configure according to your email service)
 const transporter = nodemailer.createTransport({
-  // Configure your email service here
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
+  host: process.env.EMAIL_HOST,        // mail.smtp2go.com
+  port: process.env.EMAIL_PORT,        // 2525 (recommended) or 587
+  secure: false,                       // false for 2525/587, true for 465
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+    user: process.env.EMAIL_USER,      // Your SMTP2GO username
+    pass: process.env.EMAIL_PASS       // Your SMTP2GO password
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
@@ -57,38 +60,124 @@ exports.warnUser = async (req, res, next) => {
     // Get admin info for email
     const admin = await User.findByPk(adminId);
 
-    console.log(process.env.EMAIL_HOST, process.env.EMAIL_PORT, process.env.EMAIL_USER, process.env.EMAIL_PASS);
+    console.log('email config:', process.env.EMAIL_HOST, process.env.EMAIL_PORT, process.env.EMAIL_USER, process.env.EMAIL_PASS);
 
     // Send warning email if requested
-    if (sendEmail) {
-      try {
-        const mailOptions = {
-          from: process.env.EMAIL_FROM || 'noreply@codeexam.com',
-          to: user.email,
-          subject: 'Warning Notice - CodeExam Platform',
-          html: `
-            <h2>Warning Notice</h2>
-            <p>Dear ${user.username},</p>
-            <p>You have received a warning from the CodeExam administration team.</p>
-            <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
-              <h3>Warning Details:</h3>
-              <p><strong>Reason:</strong> ${reason}</p>
-              <p><strong>Issued By:</strong> ${admin.username}</p>
-              <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-            </div>
-            <p>Please review our platform guidelines and ensure future compliance.</p>
-            <p>If you have any questions or believe this warning was issued in error, please contact our support team.</p>
-            <br>
-            <p>Best regards,<br>CodeExam Administration Team</p>
-          `
-        };
+if (sendEmail) {
+  try {
+    // Validate user email exists
+    if (!user.email || !user.email.trim()) {
+      console.warn(`Warning created but no email sent - User ${userId} has no email address`);
+    } else {
+      // Escape HTML content to prevent XSS
+      const escapeHtml = (text) => {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      };
 
-        await transporter.sendMail(mailOptions);
-      } catch (emailError) {
-        console.error('Failed to send warning email:', emailError);
-        // Don't fail the warning creation if email fails
-      }
+      const mailOptions = {
+        from: process.env.EMAIL_FROM || 'noreply@codeexam.com',
+        to: user.email.trim(),
+        subject: 'Warning Notice - CodeExam Platform',
+        html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Warning Notice</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
+            <h2 style="color: #dc3545; margin-top: 0;">⚠️ Warning Notice</h2>
+            <p>Dear <strong>${escapeHtml(user.username)}</strong>,</p>
+            <p>You have received a warning from the CodeExam administration team.</p>
+            
+            <div style="background-color: #fff; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; border-radius: 4px;">
+              <h3 style="color: #856404; margin-top: 0;">Warning Details:</h3>
+              <p><strong>Reason:</strong> ${escapeHtml(reason.trim())}</p>
+              <p><strong>Issued By:</strong> ${escapeHtml(admin.username)}</p>
+              <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</p>
+            </div>
+            
+            <p>Please review our platform guidelines and ensure future compliance to avoid further action.</p>
+            <p>If you have any questions or believe this warning was issued in error, please contact our support team.</p>
+            
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 30px 0;">
+            
+            <p style="margin-bottom: 0;">
+              Best regards,<br>
+              <strong>CodeExam Administration Team</strong>
+            </p>
+            
+            <div style="margin-top: 30px; padding: 15px; background-color: #e9ecef; border-radius: 4px; font-size: 12px; color: #6c757d;">
+              <p style="margin: 0;">This is an automated message. Please do not reply to this email.</p>
+              <p style="margin: 5px 0 0 0;">For support inquiries, please contact: support@codeexam.com</p>
+            </div>
+          </div>
+        </body>
+        </html>
+        `,
+        // Also include a plain text version for better compatibility
+        text: `
+Warning Notice - CodeExam Platform
+
+Dear ${user.username},
+
+You have received a warning from the CodeExam administration team.
+
+Warning Details:
+- Reason: ${reason.trim()}
+- Issued By: ${admin.username}
+- Date: ${new Date().toLocaleDateString()}
+
+Please review our platform guidelines and ensure future compliance.
+
+If you have any questions or believe this warning was issued in error, please contact our support team.
+
+Best regards,
+CodeExam Administration Team
+
+This is an automated message. Please do not reply to this email.
+        `.trim()
+      };
+
+      // Send the email
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`✅ Warning email sent successfully to ${user.email}`, {
+        messageId: info.messageId,
+        userId: userId,
+        warningId: warning.id
+      });
     }
+  } catch (emailError) {
+    console.error('❌ Failed to send warning email:', {
+      error: emailError.message,
+      userId: userId,
+      userEmail: user.email,
+      warningId: warning.id,
+      stack: emailError.stack
+    });
+    
+    // Optionally, you could store failed email attempts in the database
+    // await Warning.update(
+    //   { emailSent: false, emailError: emailError.message },
+    //   { where: { id: warning.id } }
+    // );
+    
+    // Don't fail the warning creation if email fails
+  }
+}
 
     // Get warning count for this user
     const warningCount = await Warning.count({
