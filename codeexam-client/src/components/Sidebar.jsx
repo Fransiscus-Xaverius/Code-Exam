@@ -47,15 +47,15 @@ const Sidebar = () => {
 
     const roleSpecificItems = {
       competitor: [
-        {
-          icon: <UserCircle className="h-5 w-5" />,
-          label: 'My Profile',
-          path: '/profile',
-          active: location.pathname === '/profile'
-        },
-        {
-          icon: <FileText className="h-5 w-5" />,
-          label: 'My Submissions',
+        // { 
+        //   icon: <UserCircle className="h-5 w-5" />, 
+        //   label: 'My Profile', 
+        //   path: '/profile',
+        //   active: location.pathname === '/profile'
+        // },
+        { 
+          icon: <FileText className="h-5 w-5" />, 
+          label: 'My Submissions', 
           path: '/my-submissions',
           active: location.pathname === '/my-submissions'
         },
@@ -73,41 +73,41 @@ const Sidebar = () => {
           path: '/manage/users',
           active: location.pathname === '/manage/users'
         },
-        {
-          icon: <FileText className="h-5 w-5" />,
-          label: 'All Submissions',
-          path: '/submissions',
-          active: location.pathname === '/submissions'
-        },
-        {
-          icon: <Inbox className="h-5 w-5" />,
-          label: 'Manage Feedback',
+        // { 
+        //   icon: <FileText className="h-5 w-5" />, 
+        //   label: 'All Submissions', 
+        //   path: '/submissions',
+        //   active: location.pathname === '/submissions'
+        // },
+        { 
+          icon: <Inbox className="h-5 w-5" />, 
+          label: 'Manage Feedback', 
           path: '/manage/feedback',
           active: location.pathname === '/manage/feedback'
         },
-        {
-          icon: <Settings className="h-5 w-5" />,
-          label: 'Platform Settings',
-          path: '/settings',
-          active: location.pathname === '/settings'
-        },
+        // { 
+        //   icon: <Settings className="h-5 w-5" />, 
+        //   label: 'Platform Settings', 
+        //   path: '/settings',
+        //   active: location.pathname === '/settings'
+        // },
       ],
       judge: [
-        {
-          icon: <FileText className="h-5 w-5" />,
-          label: 'Review Submissions',
-          path: '/review',
-          active: location.pathname === '/review'
-        },
-        {
-          icon: <Activity className="h-5 w-5" />,
-          label: 'Judge Panel',
-          path: '/judge-panel',
-          active: location.pathname === '/judge-panel'
-        },
-        {
-          icon: <MessageSquare className="h-5 w-5" />,
-          label: 'Feedback',
+        // { 
+        //   icon: <FileText className="h-5 w-5" />, 
+        //   label: 'Review Submissions', 
+        //   path: '/review',
+        //   active: location.pathname === '/review'
+        // },
+        // { 
+        //   icon: <Activity className="h-5 w-5" />, 
+        //   label: 'Judge Panel', 
+        //   path: '/judge-panel',
+        //   active: location.pathname === '/judge-panel'
+        // },
+        { 
+          icon: <MessageSquare className="h-5 w-5" />, 
+          label: 'Feedback', 
           path: '/feedback',
           active: location.pathname === '/feedback'
         },
