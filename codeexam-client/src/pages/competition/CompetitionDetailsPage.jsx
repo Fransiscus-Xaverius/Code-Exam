@@ -708,12 +708,14 @@ const CompetitionDetailsPage = () => {
               </Card>
             )}
             
-            <SubmissionsList 
-              submissions={submissions}
-              competitionId={competition.id}
-              isLoading={submissionsLoading}
-              error={error}
-            />
+            {activeTab === 'submissions' && (user?.role === 'admin' || user?.role === 'judge') && (
+              <SubmissionsList 
+                submissions={submissions}
+                competitionId={competition.id}
+                isLoading={submissionsLoading}
+                error={error}
+              />
+            )}
 
             {activeTab === 'leaderboard' && competition.leaderboard_visible && (
               <Card>

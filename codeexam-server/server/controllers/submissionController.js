@@ -705,7 +705,7 @@ exports.getSubmissions = async (req, res, next) => {
         {
           model: Problem,
           as: 'problem',
-          attributes: ['id', 'title', 'difficulty']
+          attributes: ['id', 'title', 'difficulty', 'points']
         },
         {
           model: User,

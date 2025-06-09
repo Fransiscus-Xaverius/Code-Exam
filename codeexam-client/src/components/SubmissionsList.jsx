@@ -147,7 +147,7 @@ const SubmissionsList = ({ submissions = [], competitionId, isLoading, error }) 
                   <span className="text-gray-500">Language:</span> {formatLanguage(submission.language)}
                 </div>
                 <div>
-                  <span className="text-gray-500">Score:</span> {submission.score !== null ? `${submission.score}/100` : 'N/A'}
+                  <span className="text-gray-500">Score:</span> {submission.score !== null ? `${submission.score}/${submission}` : 'N/A'}
                 </div>
                 <div className="col-span-2">
                   <span className="text-gray-500">Submitted:</span> {formatDate(submission.submitted_at)}
@@ -229,7 +229,7 @@ const SubmissionsList = ({ submissions = [], competitionId, isLoading, error }) 
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {submission.score !== null ? `${submission.score}/100` : 'N/A'}
+                  {submission.score !== null ? `${submission.score}/${submission.problem.points}` : 'N/A'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDate(submission.submitted_at)}

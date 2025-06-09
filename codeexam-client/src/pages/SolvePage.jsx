@@ -262,15 +262,21 @@ useEffect(() => {
       if (response.data.submission.status === 'pending' || response.data.submission.status === 'processing' || response.data.submission.status === 'judging') {
         setTimeout(() => checkSubmissionStatus(), 1000);
       } else {
+        console.log('kontol', response.data)
         const status = response.data.submission.status;
         const score = response.data.submission.score;
-        const runtime = response.data.submission.runtime_ms;
-        const memory = response.data.submission.memory_kb;
+        const testResults = response.data.submission.test_results ? JSON.parse(response.data.submission.test_results) : [];
+        const runtime = testResults.length > 0 
+          ? Math.round(testResults.reduce((sum, test) => sum + test.runtime_ms, 0) / testResults.length * 1000) / 1000
+          : response.data.submission.runtime_ms || 0;
+        const memory = testResults.length > 0 
+          ? Math.round(testResults.reduce((sum, test) => sum + test.memory_kb, 0) / testResults.length)
+          : response.data.submission.memory_kb || 0;
 
         let resultMessage = `Submission ${status}\n`;
         resultMessage += `Score: ${score}/100\n`;
-        resultMessage += `Runtime: ${runtime}ms\n`;
-        resultMessage += `Memory: ${memory}KB\n\n`;
+        resultMessage += `Average Runtime: ${runtime}ms\n`;
+        resultMessage += `Average Memory Usage: ${memory}KB\n\n`;
 
         if (response.data.submission.error_message) {
           resultMessage += `Error: ${response.data.submission.error_message}\n\n`;
@@ -325,6 +331,7 @@ useEffect(() => {
         if (isReviewMode) {
           // In review mode, we're loading a submission
           await fetchSubmission(id);
+          
         } else {
           // In solve mode, we're loading a problem
           await fetchProblem(id);
@@ -349,6 +356,7 @@ useEffect(() => {
       
       if (response.data.success) {
         const submissionData = response.data.submission;
+        console.log(response)
         setSubmission(submissionData);
         setCode(submissionData.code);
         setLanguage(submissionData.language);
@@ -396,6 +404,7 @@ useEffect(() => {
       console.error('Error fetching submission:', err);
       throw err;
     }
+
   };
   
   // Fetch a problem
@@ -987,14 +996,14 @@ const Label = ({ children, htmlFor, className = '', required = false }) => (
             <div className="p-6">
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Score (0-100)
+                  Score (0 - {problem?.points} points)
                 </label>
                 <input
                   type="number"
                   min="0"
-                  max="100"
+                  max={problem?.points}
                   value={judgeScore}
-                  onChange={(e) => setJudgeScore(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                  onChange={(e) => setJudgeScore(Math.min(problem?.points || 0, Math.max(0, parseInt(e.target.value) || 0)))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
                 <div className="mt-2 flex items-center">
@@ -1003,7 +1012,7 @@ const Label = ({ children, htmlFor, className = '', required = false }) => (
                       className={`h-2.5 rounded-full ${
                         judgeScore >= 60 ? 'bg-green-600' : 'bg-red-600'
                       }`} 
-                      style={{ width: `${judgeScore}%` }}
+                      style={{ width: `${Math.min(100, judgeScore)}%` }}  // Cap visual width at 100%
                     ></div>
                   </div>
                   <span className="ml-2 text-sm font-medium text-gray-700">{judgeScore}%</span>
