@@ -41,8 +41,6 @@ const CodeExamDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [pendingSubmissions, setPendingSubmissions] = useState(0);
-  const [activeCompetition, setActiveCompetition] = useState(null);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -77,11 +75,6 @@ const CodeExamDashboard = () => {
   // Add new problem handler
   const handleAddNewProblem = () => {
     navigate('/problem/new');
-  };
-
-  // Handle review submissions (for judge role)
-  const handleReviewSubmissions = () => {
-    navigate('/submissions/pending');
   };
 
   // Clear all filters
@@ -137,39 +130,6 @@ const CodeExamDashboard = () => {
         setTotalPages(1);
       }
 
-      // For judge role, fetch pending submissions count
-      if (userRole === 'judge') {
-        try {
-          const submissionsResponse = await API.get('/api/submissions/pending', {
-            headers: { Authorization: token ? `Bearer ${token}` : '' }
-          });
-
-          if (submissionsResponse.data.success) {
-            setPendingSubmissions(submissionsResponse.data.count || 0);
-          }
-        } catch (err) {
-          console.error('Error fetching pending submissions:', err);
-        }
-      }
-
-      // For competitor role, check if there's an active competition
-      if (userRole === 'competitor') {
-        try {
-          const competitionsResponse = await API.get('/api/competitions/active', {
-            headers: { Authorization: token ? `Bearer ${token}` : '' }
-          });
-
-          if (competitionsResponse.data.success && competitionsResponse.data.competition) {
-            setActiveCompetition(competitionsResponse.data.competition);
-          } else {
-            setActiveCompetition(null);
-          }
-        } catch (err) {
-          console.error('Error fetching active competition:', err);
-          setActiveCompetition(null);
-        }
-      }
-
     } catch (err) {
       console.error('Error fetching problems:', err);
       setError('Failed to load problems. Please try again later.');
@@ -201,181 +161,14 @@ const CodeExamDashboard = () => {
     </div>
   );
 
-  // Render the competition timer component (for competitor role)
-  const CompetitionTimer = ({ competition }) => {
-    const [timeRemaining, setTimeRemaining] = useState('');
-    const [status, setStatus] = useState('');
-
-    useEffect(() => {
-      const calculateTimeRemaining = () => {
-        const now = new Date().getTime();
-        const startTime = new Date(competition.start_time).getTime();
-        const endTime = new Date(competition.end_time).getTime();
-
-        if (now < startTime) {
-          // Competition hasn't started yet
-          setStatus('upcoming');
-          setTimeRemaining(formatTime(startTime - now));
-        } else if (now < endTime) {
-          // Competition is active
-          setStatus('active');
-          setTimeRemaining(formatTime(endTime - now));
-        } else {
-          // Competition has ended
-          setStatus('ended');
-          setTimeRemaining('Competition has ended');
-        }
-      };
-
-      calculateTimeRemaining();
-      const timer = setInterval(calculateTimeRemaining, 1000);
-
-      return () => clearInterval(timer);
-    }, [competition]);
-
-    const formatTime = (ms) => {
-      const totalSeconds = Math.floor(ms / 1000);
-      const days = Math.floor(totalSeconds / 86400);
-      const hours = Math.floor((totalSeconds % 86400) / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-
-      if (days > 0) {
-        return `${days}d ${hours}h ${minutes}m`;
-      }
-
-      return `${hours}h ${minutes}m ${seconds}s`;
-    };
-
-    const statusColors = {
-      'upcoming': 'bg-blue-500',
-      'active': 'bg-green-500',
-      'ended': 'bg-gray-500'
-    };
-
-    const statusText = {
-      'upcoming': 'Starting in:',
-      'active': 'Time remaining:',
-      'ended': ''
-    };
-
-    return (
-      <div className="flex flex-col items-center">
-        <div className={`${statusColors[status]} text-white text-xs font-medium px-2.5 py-1 rounded-full mb-2`}>
-          {status === 'upcoming' ? 'Upcoming' : status === 'active' ? 'Active' : 'Ended'}
-        </div>
-
-        <p className="text-sm text-gray-500">{statusText[status]}</p>
-        <p className="text-xl font-bold tracking-tight">{timeRemaining}</p>
-      </div>
-    );
-  };
-
-  // Render active competition card (for competitor role)
-  const renderActiveCompetition = () => {
-    if (!activeCompetition) return null;
-
-    return (
-      <Card className="p-4 mb-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">{activeCompetition.name}</h2>
-            <p className="text-sm text-gray-500">Active Competition</p>
-          </div>
-          <div className="mt-3 sm:mt-0">
-            <CompetitionTimer competition={activeCompetition} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Your Rank</p>
-            <p className="text-xl font-bold">{activeCompetition.userRank || '-'} / {activeCompetition.participants}</p>
-          </div>
-
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Points</p>
-            <p className="text-xl font-bold">{activeCompetition.userPoints || 0} / {activeCompetition.totalPoints}</p>
-          </div>
-
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Problems Solved</p>
-            <p className="text-xl font-bold">{activeCompetition.problemsSolved || 0} / {activeCompetition.totalProblems}</p>
-          </div>
-        </div>
-
-        <div className="mt-4 flex justify-end">
-          <Button
-            onClick={() => navigate(`/competitions/${activeCompetition.id}`)}
-            className="w-full sm:w-auto"
-          >
-            Go to Competition
-          </Button>
-        </div>
-      </Card>
-    );
-  };
-
-  // Render judge dashboard summary (for judge role)
-  const renderJudgeSummary = () => {
-    return (
-      <Card className="p-4 mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Judge Dashboard</h2>
-            <p className="text-sm text-gray-500">Pending submissions require your review</p>
-          </div>
-          {pendingSubmissions > 0 && (
-            <Button
-              onClick={handleReviewSubmissions}
-              className="mt-3 sm:mt-0 w-full sm:w-auto bg-yellow-500 hover:bg-yellow-600"
-            >
-              <FileText size={18} className="mr-2" />
-              Review Pending ({pendingSubmissions})
-            </Button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-yellow-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Pending Reviews</p>
-            <p className="text-xl font-bold">{pendingSubmissions}</p>
-          </div>
-
-          <div className="bg-green-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Reviews Today</p>
-            <p className="text-xl font-bold">12</p>
-          </div>
-
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600 mb-1">Total Reviews</p>
-            <p className="text-xl font-bold">438</p>
-          </div>
-        </div>
-      </Card>
-    );
-  };
-
   const renderDashboardHeader = () => {
-    let title = "Problems";
-    let description = "";
+    let title = "Problems Dashboard";
+    let description = "Browse and solve coding problems";
 
-    switch (userRole) {
-      case 'competitor':
-        title = "Problem Dashboard";
-        description = "Solve problems and improve your coding skills";
-        break;
-      case 'admin':
-        title = "Problem Management";
-        description = "Create, edit, and manage coding problems";
-        break;
-      case 'judge':
-        title = "Judge Dashboard";
-        description = "Review, validate, and manage submissions";
-        break;
-      default:
-        title = "Problems Dashboard";
-        description = "Welcome to CodeExam";
+    // Only show different UI for admin role
+    if (userRole === 'admin') {
+      title = "Problem Management";
+      description = "Create, edit, and manage coding problems";
     }
 
     return (
@@ -398,19 +191,6 @@ const CodeExamDashboard = () => {
                 className="mr-2 transition-transform group-hover:rotate-90 duration-300"
               />
               <span>Add New Problem</span>
-            </Button>
-          )}
-
-          {userRole === 'judge' && pendingSubmissions > 0 && (
-            <Button
-              onClick={handleReviewSubmissions}
-              className="w-full sm:w-auto group relative inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base font-medium text-white bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
-            >
-              <FileText size={18} className="mr-2" />
-              <span>Review Pending ({pendingSubmissions})</span>
-              {pendingSubmissions > 5 && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full animate-pulse"></span>
-              )}
             </Button>
           )}
         </div>
@@ -727,10 +507,6 @@ const CodeExamDashboard = () => {
           <div className="max-w-7xl mx-auto">
             {/* Dashboard header with title and main action button */}
             {renderDashboardHeader()}
-
-            {/* Role-specific content sections */}
-            {userRole === 'competitor' && activeCompetition && renderActiveCompetition()}
-            {userRole === 'judge' && renderJudgeSummary()}
 
             {/* Filters section */}
             {renderFilters()}

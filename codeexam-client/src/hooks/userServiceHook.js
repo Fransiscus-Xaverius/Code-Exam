@@ -121,8 +121,14 @@ export const useUserOperations = () => {
     setLoading(true);
     setError(null);
     
+    let withPassword = false;
+
+    if(userData.password) {
+      withPassword = true;
+    }
+
     try {
-      const validation = UserService.validateUserData(userData);
+      const validation = UserService.validateUserData(userData, true, withPassword);
       if (!validation.isValid) {
         throw new Error(Object.values(validation.errors).join(', '));
       }

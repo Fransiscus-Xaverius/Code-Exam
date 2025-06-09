@@ -154,6 +154,7 @@ const UserManagementPage = () => {
       setSelectedUser(null);
       refetchUsers();
     } catch (err) {
+      console.log(err)
       // Error is handled by the hook
     }
   };

@@ -216,7 +216,7 @@ class UserService {
   }
 
   // Client-side validation based on User model
-  static validateUserData(userData, isUpdate = false) {
+  static validateUserData(userData, isUpdate = false, noPassword = false) {
     const errors = {};
 
     // Username validation

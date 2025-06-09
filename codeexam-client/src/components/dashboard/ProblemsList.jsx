@@ -150,41 +150,13 @@ const ProblemsList = ({
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Difficulty</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submissions</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                 </tr>
             )
         };
 
         const renderTableRow = (problem) => {
-            if (userRole === 'competitor') {
-                return (
-                    <>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer transition-colors"
-                                onClick={() => navigate(`/solve/${problem.id}`)}>
-                                {problem.title}
-                            </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                            <DifficultyBadge difficulty={problem.difficulty} />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {problem.points} points
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => navigate(`/solve/${problem.id}`)}
-                                className="text-sm px-4 py-2"
-                            >
-                                Solve Problem
-                            </Button>
-                        </td>
-                    </>
-                );
-            } else if (userRole === 'admin') {
+            if (userRole === 'admin') {
                 return (
                     <>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -228,12 +200,12 @@ const ProblemsList = ({
                         </td>
                     </>
                 );
-            } else { // judge role
+            } else {
                 return (
                     <>
                         <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer transition-colors"
-                                onClick={() => navigate(`/problem/${problem.id}`)}>
+                                onClick={() => navigate(`/solve/${problem.id}`)}>
                                 {problem.title}
                             </div>
                         </td>
@@ -243,37 +215,15 @@ const ProblemsList = ({
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {problem.points} points
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {problem.submissions || 0} total
-                            {problem.pending_submissions > 0 && (
-                                <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">
-                                    {problem.pending_submissions} pending
-                                </span>
-                            )}
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center justify-end space-x-3">
-                                <button
-                                    onClick={() => navigate(`/problem/edit/${problem.id}`)}
-                                    className="group relative flex items-center justify-center p-2 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                                    title="Edit Problem"
-                                >
-                                    <Edit size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                                    <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                                        Edit Problem
-                                    </span>
-                                </button>
-                                <button
-                                    onClick={() => navigate(`/submissions/${problem.id}`)}
-                                    className="group relative flex items-center justify-center p-2 rounded-full bg-yellow-50 hover:bg-yellow-100 text-yellow-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-1"
-                                    title="Review Submissions"
-                                >
-                                    <FileText size={16} className="group-hover:scale-110 transition-transform duration-200" />
-                                    <span className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                                        Review Submissions
-                                    </span>
-                                </button>
-                            </div>
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => navigate(`/solve/${problem.id}`)}
+                                className="text-sm px-4 py-2"
+                            >
+                                Solve Problem
+                            </Button>
                         </td>
                     </>
                 );
