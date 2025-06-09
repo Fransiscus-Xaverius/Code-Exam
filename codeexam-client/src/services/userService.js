@@ -16,6 +16,8 @@ class UserService {
       // Add role filter
       if (params.role) queryParams.append('role', params.role);
       
+      if (params.status) queryParams.append('status', params.status);
+      
       const response = await API.get(`/api/manage/users?${queryParams}`);
       
       return {

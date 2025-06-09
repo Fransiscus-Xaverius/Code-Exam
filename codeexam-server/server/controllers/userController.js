@@ -31,6 +31,10 @@ exports.getUsers = async (req, res, next) => {
     if (req.query.role) {
       filter.role = req.query.role;
     }
+
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
     
     // Get users with count
     const { count, rows: users } = await User.findAndCountAll({

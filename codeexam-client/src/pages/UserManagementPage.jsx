@@ -107,9 +107,9 @@ const UserManagementPage = () => {
   useEffect(() => {
     const params = {
       page: 1,
-      ...(searchTerm && { search: searchTerm }),
-      ...(roleFilter && { role: roleFilter }),
-      ...(statusFilter && { status: statusFilter })
+      ...({ search: searchTerm }),
+      ...({ role: roleFilter }),
+      ...({ status: statusFilter })
     };
     updateParams(params);
   }, [searchTerm, roleFilter, statusFilter, updateParams]);
