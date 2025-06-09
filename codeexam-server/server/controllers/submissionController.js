@@ -91,7 +91,7 @@ exports.createSubmission = async (req, res, next) => {
     console.log('timelimit:', problem.time_limit_ms);
     console.log('memory limit:', problem.memory_limit_kb);
     const timeLimit = ((parseInt(problem.time_limit_ms) || 1000) / 1000).toFixed(1);
-    const memoryLimit = problem.memory_limit_kb || 128000; 
+    const memoryLimit = problem.memory_limit_kb || 128000;
 
     // Submit to judge system
     submitToJudge0(submission.id, code, language, problem.hidden_test_cases, timeLimit, memoryLimit);
@@ -239,7 +239,7 @@ exports.submit = async (req, res, next) => {
     console.log('timelimit:', problem.time_limit_ms);
     console.log('memory limit:', problem.memory_limit_kb);
     const timeLimit = ((parseInt(problem.time_limit_ms) || 1000) / 1000).toFixed(1);
-    const memoryLimit = problem.memory_limit_kb || 128000; 
+    const memoryLimit = problem.memory_limit_kb || 128000;
 
     // Submit to judge system
     submitToJudge0(submission.id, code, language, problem.hidden_test_cases, timeLimit, memoryLimit);
@@ -279,12 +279,12 @@ exports.getPublicSubmissions = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const startIndex = (page - 1) * limit;
-    
+
     // Base filtering - only published submissions
     const filter = {
       is_published: 1
     };
-    
+
     // Filter parameter from frontend ('all', 'accepted', 'my')
     const filterType = req.query.filter;
     if (filterType === 'accepted') {
@@ -292,24 +292,24 @@ exports.getPublicSubmissions = async (req, res, next) => {
     } else if (filterType === 'my' && req.user) {
       filter.user_id = req.user.id;
     }
-    
+
     // Additional specific filters
     if (req.query.problem_id) {
       filter.problem_id = req.query.problem_id;
     }
-    
+
     if (req.query.language) {
       filter.language = req.query.language;
     }
-    
+
     if (req.query.user_id) {
       filter.user_id = req.query.user_id;
     }
-    
+
     if (req.query.status) {
       filter.status = req.query.status;
     }
-    
+
     // Search functionality
     let searchCondition = {};
     if (req.query.search) {
@@ -326,18 +326,18 @@ exports.getPublicSubmissions = async (req, res, next) => {
         };
       }
     }
-    
+
     // Combine base filter with search condition
     const whereCondition = {
       ...filter,
       ...searchCondition
     };
-    
+
     // Sorting logic
     let orderBy = [['submitted_at', 'DESC']]; // default
     const sortType = req.query.sort;
     const tabType = req.query.tab;
-    
+
     // Handle tab-specific sorting first, then apply sort parameter
     if (tabType === 'popular') {
       // Popular submissions - those with high engagement in the last 30 days
@@ -348,7 +348,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
         )`), 'DESC'],
         ['submitted_at', 'DESC']
       ];
-      
+
       // Add date filter for popularity (last 30 days)
       whereCondition.submitted_at = {
         [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
@@ -387,7 +387,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
           orderBy = [['submitted_at', 'DESC']];
       }
     }
-    
+
     // Build include array
     const includeArray = [
       {
@@ -407,7 +407,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
         required: false
       }
     ];
-    
+
     // Build attributes with virtual fields
     const attributesConfig = {
       include: [
@@ -431,7 +431,7 @@ exports.getPublicSubmissions = async (req, res, next) => {
         'isLiked'
       ]);
     }
-    
+
     // Get submissions with count
     const { count, rows: submissions } = await Submission.findAndCountAll({
       where: whereCondition,
@@ -443,25 +443,25 @@ exports.getPublicSubmissions = async (req, res, next) => {
       distinct: true, // Important when using includes to avoid duplicate counting
       subQuery: false
     });
-    
+
     // Pagination result
     const pagination = {};
     const totalPages = Math.ceil(count / limit);
-    
+
     if (page < totalPages) {
       pagination.next = {
         page: page + 1,
         limit
       };
     }
-    
+
     if (page > 1) {
       pagination.prev = {
         page: page - 1,
         limit
       };
     }
-    
+
     res.status(200).json({
       success: true,
       count,
@@ -960,7 +960,7 @@ exports.getSubmissionStats = async (req, res, next) => {
     const problemCounts = await Submission.findAll({
       attributes: [
         'problem_id',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        [sequelize.fn('COUNT', sequelize.col('Submission.id')), 'count']
       ],
       where: { user_id: userId },
       group: ['problem_id'],
@@ -968,7 +968,8 @@ exports.getSubmissionStats = async (req, res, next) => {
         {
           model: Problem,
           as: 'problem',
-          attributes: ['title']
+          attributes: ['title'],
+          required: false
         }
       ]
     });
@@ -992,7 +993,8 @@ exports.getSubmissionStats = async (req, res, next) => {
         {
           model: Problem,
           as: 'problem',
-          attributes: ['id', 'title']
+          attributes: ['id', 'title'],
+          required: false
         }
       ],
       attributes: ['id', 'status', 'score', 'submitted_at']
@@ -1008,6 +1010,7 @@ exports.getSubmissionStats = async (req, res, next) => {
       }
     });
   } catch (error) {
+    console.error('Error getting submission stats:', error);
     next(error);
   }
 };
