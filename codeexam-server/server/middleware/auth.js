@@ -31,6 +31,21 @@ exports.auth = async (req, res, next) => {
       return res.status(401).json({ message: 'User no longer exists' });
     }
 
+    // Check user status - prevent access for banned/inactive accounts
+    if (user.status !== 'active') {
+      let message = 'Access denied - account not active';
+      if (user.status === 'banned') {
+        message = 'Account has been banned';
+      } else if (user.status === 'inactive') {
+        message = 'Account has been deactivated';
+      }
+      return res.status(403).json({ 
+        success: false,
+        message: message,
+        accountStatus: user.status
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {
@@ -68,6 +83,21 @@ exports.adminOnly = async (req, res, next) => {
       
       if (!user) {
         return res.status(401).json({ message: 'User no longer exists' });
+      }
+      
+      // Check user status - prevent access for banned/inactive accounts
+      if (user.status !== 'active') {
+        let message = 'Access denied - account not active';
+        if (user.status === 'banned') {
+          message = 'Account has been banned';
+        } else if (user.status === 'inactive') {
+          message = 'Account has been deactivated';
+        }
+        return res.status(403).json({ 
+          success: false,
+          message: message,
+          accountStatus: user.status
+        });
       }
       
       // Check if user is admin
@@ -114,6 +144,21 @@ exports.protect = (roles = []) => {
       
       if (!user) {
         return res.status(401).json({ message: 'User no longer exists' });
+      }
+      
+      // Check user status - prevent access for banned/inactive accounts
+      if (user.status !== 'active') {
+        let message = 'Access denied - account not active';
+        if (user.status === 'banned') {
+          message = 'Account has been banned';
+        } else if (user.status === 'inactive') {
+          message = 'Account has been deactivated';
+        }
+        return res.status(403).json({ 
+          success: false,
+          message: message,
+          accountStatus: user.status
+        });
       }
       
       // Check if user has required role (if roles specified)

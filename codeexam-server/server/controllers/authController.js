@@ -20,6 +20,21 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check user status - prevent login for banned/inactive accounts
+    if (user.status !== 'active') {
+      let message = 'Account access denied';
+      if (user.status === 'banned') {
+        message = 'Account has been banned';
+      } else if (user.status === 'inactive') {
+        message = 'Account has been deactivated';
+      }
+      return res.status(403).json({ 
+        success: false,
+        message: message,
+        accountStatus: user.status
+      });
+    }
+
     // Check password match
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
@@ -36,9 +51,12 @@ exports.login = async (req, res, next) => {
     // Return user without password
     const userResponse = {
       id: user.id,
-      name: user.name,
+      username: user.username,
       email: user.email,
       role: user.role,
+      status: user.status,
+      first_name: user.first_name,
+      last_name: user.last_name,
       createdAt: user.createdAt
     };
 
@@ -147,11 +165,14 @@ exports.getMe = async (req, res, next) => {
   try {
     // User is already attached to request in auth middleware
     const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ['password'] }
+      attributes: { exclude: ['password_hash'] }
     });
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
     }
     
     res.status(200).json({

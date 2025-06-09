@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '../components/Button';
@@ -11,15 +11,35 @@ import { InputField } from '../components/InputField';
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accountStatusMessage, setAccountStatusMessage] = useState('');
+  const [accountStatus, setAccountStatus] = useState('');
+  const [localLoading, setLocalLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { loading, error } = useSelector(state => state.auth);
 
+  // Check for account status messages from sessionStorage
+  useEffect(() => {
+    const statusMessage = sessionStorage.getItem('accountStatusMessage');
+    const status = sessionStorage.getItem('accountStatus');
+
+    if (statusMessage && status) {
+      setAccountStatusMessage(statusMessage);
+      setAccountStatus(status);
+
+      // Clear the messages from sessionStorage
+      sessionStorage.removeItem('accountStatusMessage');
+      sessionStorage.removeItem('accountStatus');
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     try {
       dispatch(loginStart());
-      
+      setLocalLoading(true);
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -27,27 +47,51 @@ const LoginPage = () => {
         },
         body: JSON.stringify({ email, password }),
       });
-      
+
       const data = await response.json();
-      
+
+      // Handle account status errors specifically (403 status)
+      if (response.status === 403 && data.accountStatus) {
+        setAccountStatusMessage(data.message);
+        setAccountStatus(data.accountStatus);
+        setLocalLoading(false);
+        // Reset Redux loading state properly
+        dispatch(loginFailure(''));
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data.message || 'Login failed');
       }
-      
+
+      // Clear account status messages only on successful login
+      setAccountStatusMessage('');
+      setAccountStatus('');
+
       localStorage.setItem('codeexam_token', data.token);
-      
+
       dispatch(loginSuccess({
         user: data.user,
         token: data.token
       }));
-      
+
       navigate('/dashboard');
-      
+
     } catch (err) {
+      setLocalLoading(false);
       dispatch(loginFailure(err.message || 'Login failed. Please try again.'));
     }
   };
-  
+
+  // Don't clear account status messages when typing - let them persist
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md p-8 space-y-8">
@@ -58,15 +102,30 @@ const LoginPage = () => {
             Sign in to your account to continue your coding journey
           </p>
         </div>
-        
-        {error && (
-          <Alert 
-            type="error" 
+
+        {/* Account Status Messages */}
+        {accountStatusMessage && (
+          <Alert
+            type={accountStatus === 'banned' ? 'error' : 'warning'}
+            message={
+              accountStatus === 'banned'
+                ? "Your account has been banned. Please contact administrator for assistance."
+                : accountStatus === 'inactive'
+                  ? "Your account has been deactivated. Please contact administrator for assistance."
+                  : accountStatusMessage
+            }
+            className="animate-fade-in"
+          />
+        )}
+
+        {error && !accountStatusMessage && (
+          <Alert
+            type="error"
             message={error}
             className="animate-fade-in"
           />
         )}
-        
+
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div className="space-y-4">
             <InputField
@@ -74,28 +133,28 @@ const LoginPage = () => {
               type="email"
               name="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={handleEmailChange}
               required
               placeholder="Enter your email"
               autoComplete="email"
-              disabled={loading}
+              disabled={loading || localLoading}
               error={error && error.includes('email') ? error : false}
               aria-label="Email address"
             />
-            
+
             <InputField
               label="Password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={handlePasswordChange}
               required
               placeholder="Enter your password"
               autoComplete="current-password"
-              disabled={loading}
+              disabled={loading || localLoading}
               aria-label="Password"
             />
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <input
@@ -109,7 +168,7 @@ const LoginPage = () => {
               </label>
             </div>
 
-            <a 
+            <a
               href="/forgot-password"
               className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
             >
@@ -120,10 +179,10 @@ const LoginPage = () => {
           <Button
             type="submit"
             fullWidth
-            disabled={loading}
+            disabled={loading || localLoading}
             className="py-2.5 text-base font-medium shadow-sm"
           >
-            {loading ? (
+            {(loading || localLoading) ? (
               <div className="flex items-center justify-center">
                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -134,12 +193,12 @@ const LoginPage = () => {
             ) : 'Sign in'}
           </Button>
         </form>
-        
+
         <div className="text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{' '}
-            <a 
-              href="/register" 
+            <a
+              href="/register"
               className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
             >
               Sign up

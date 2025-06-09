@@ -20,21 +20,42 @@ export const AuthProvider = ({ children }) => {
           // Set default authorization header
           API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
-          // Verify token is valid
+          // Verify token is valid and user status is active
           const response = await API.get('/api/auth/me');
-          setUser(response.data.user);
+          
+          // Check if user account is active
+          if (response.data.user && response.data.user.status !== 'active') {
+            // Account is banned or inactive, handle logout
+            localStorage.removeItem('codeexam_token');
+            delete API.defaults.headers.common['Authorization'];
+            
+            // Store status for login page display
+            const accountStatus = response.data.user.status;
+            const message = accountStatus === 'banned' 
+              ? 'Your account has been banned. Please contact administrator for assistance.'
+              : 'Your account has been deactivated. Please contact administrator for assistance.';
+            
+            sessionStorage.setItem('accountStatusMessage', message);
+            sessionStorage.setItem('accountStatus', accountStatus);
+            
+            setUser(null);
+            navigate('/login');
+          } else {
+            setUser(response.data.user);
+          }
         }
       } catch (error) {
-        // Token invalid or expired
+        // Token invalid or expired, or 403 error handled by API interceptor
         localStorage.removeItem('codeexam_token');
         delete API.defaults.headers.common['Authorization'];
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
     
     checkAuth();
-  }, []);
+  }, [navigate]);
   
   const login = async (email, password) => {
     const response = await API.post('/api/auth/login', { email, password });
