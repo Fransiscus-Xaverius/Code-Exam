@@ -8,6 +8,7 @@ import {
   Download, ExternalLink, ChevronRight, ChevronDown, ChevronUp
 } from 'lucide-react';
 import API from '../components/helpers/API';
+import { AlertCircle, CheckCircle, Info } from 'lucide-react';
 
 // Common UI components
 const Button = ({ children, onClick, disabled, className, variant = 'primary', size = 'md' }) => {
@@ -83,6 +84,10 @@ const SolvePage = () => {
   const [runCodeStatus, setRunCodeStatus] = useState(null);
   const [pollingInterval, setPollingInterval] = useState(2000); // 2 seconds initial polling
 
+  const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false);
+  const [submissionTitle, setSubmissionTitle] = useState('');
+  const [submissionExplanation, setSubmissionExplanation] = useState('');
+
 // Helper function to convert language name to ID
 const getLanguageId = (lang) => {
   const languageMap = {
@@ -92,6 +97,12 @@ const getLanguageId = (lang) => {
     'cpp': 54,
   };
   return languageMap[lang] || 63;
+};
+
+const openSubmissionModal = () => {
+    setSubmissionTitle('');
+    setSubmissionExplanation('');
+    setIsSubmissionModalOpen(true);
 };
 
 // Run code functionality
@@ -622,6 +633,249 @@ useEffect(() => {
     );
   };
 
+  const postPublicSubmission = async () => {
+    try {
+      setIsRunning(true);
+      const token = localStorage.getItem('codeexam_token');
+
+      const updateRes = await API.put(`/api/submissions/${submissionId}/publish`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+
+      const publicRes = await API.post(`/api/discussions/${submissionId}`, {
+        submission_id: submissionId,
+        problem_id: id,
+        title: submissionTitle,
+        content: submissionExplanation
+      }, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+
+      setIsSubmissionModalOpen(false);
+    } catch (error) {
+      console.error('Error processing submission:', error);
+      setOutput(`Error processing submission: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  const Dialog = ({ open, onOpenChange, children }) => {
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop with blur effect */}
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+        onClick={() => onOpenChange(false)}
+      />
+      
+      {/* Dialog content with animation */}
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-100 opacity-100 animate-in zoom-in-95 fade-in-0">
+        {children}
+      </div>
+    </div>
+  );
+};
+
+const Textarea = ({ 
+  value, 
+  onChange, 
+  placeholder, 
+  className = '', 
+  id,
+  rows = 3,
+  error = false,
+  disabled = false 
+}) => (
+  <textarea
+    id={id}
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    disabled={disabled}
+    rows={rows}
+    className={`
+      w-full px-3 py-2 border rounded-lg transition-colors duration-200 resize-none
+      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+      ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'}
+      ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}
+      ${className}
+    `}
+  />
+);
+
+// Dialog Header with close button
+const DialogHeader = ({ children, onClose, showCloseButton = true }) => (
+  <div className="flex items-center justify-between p-6 border-b border-gray-100">
+    <div className="flex-1">
+      {children}
+    </div>
+    {showCloseButton && (
+      <button
+        onClick={onClose}
+        className="ml-4 p-1 rounded-full hover:bg-gray-100 transition-colors duration-200 text-gray-400 hover:text-gray-600"
+        aria-label="Close dialog"
+      >
+        <X size={20} />
+      </button>
+    )}
+  </div>
+);
+
+// Dialog Title
+const DialogTitle = ({ children, icon, variant = 'default' }) => {
+  const iconColors = {
+    default: 'text-gray-600',
+    success: 'text-green-600',
+    warning: 'text-amber-600',
+    error: 'text-red-600',
+    info: 'text-blue-600'
+  };
+
+  const getIcon = () => {
+    if (icon) return icon;
+    switch (variant) {
+      case 'success': return <CheckCircle size={24} />;
+      case 'warning': return <AlertCircle size={24} />;
+      case 'error': return <AlertCircle size={24} />;
+      case 'info': return <Info size={24} />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      {getIcon() && (
+        <div className={iconColors[variant]}>
+          {getIcon()}
+        </div>
+      )}
+      <h2 className="text-xl font-semibold text-gray-900 leading-tight">
+        {children}
+      </h2>
+    </div>
+  );
+};
+
+// Dialog Description
+const DialogDescription = ({ children, className = '' }) => (
+  <p className={`text-gray-600 text-sm leading-relaxed ${className}`}>
+    {children}
+  </p>
+);
+
+// Dialog Content
+const DialogContent = ({ children, className = '' }) => (
+  <div className={`p-6 ${className}`}>
+    {children}
+  </div>
+);
+
+// Dialog Footer
+const DialogFooter = ({ children, className = '' }) => (
+  <div className={`px-6 py-4 bg-gray-50 rounded-b-xl flex gap-3 justify-end ${className}`}>
+    {children}
+  </div>
+);
+
+// Enhanced Button Component
+const Button = ({ 
+  children, 
+  onClick, 
+  disabled = false, 
+  className = '', 
+  variant = 'primary',
+  size = 'md',
+  loading = false 
+}) => {
+  const variants = {
+    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
+    secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500',
+    outline: 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500',
+    ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
+    success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
+    warning: 'bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500',
+    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
+  };
+
+  const sizes = {
+    sm: 'px-3 py-1.5 text-sm',
+    md: 'px-4 py-2',
+    lg: 'px-6 py-3 text-lg'
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || loading}
+      className={`
+        inline-flex items-center justify-center gap-2 rounded-lg font-medium
+        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+        ${variants[variant]} ${sizes[size]}
+        ${disabled || loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}
+        ${className}
+      `}
+    >
+      {loading && (
+        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      )}
+      {children}
+    </button>
+  );
+};
+
+// Enhanced Input Component
+const Input = ({ 
+  value, 
+  onChange, 
+  placeholder, 
+  className = '', 
+  id, 
+  type = 'text',
+  error = false,
+  disabled = false 
+}) => (
+  <input
+    type={type}
+    id={id}
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    disabled={disabled}
+    className={`
+      w-full px-3 py-2 border rounded-lg transition-colors duration-200
+      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+      ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'}
+      ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}
+      ${className}
+    `}
+  />
+);
+
+// Enhanced Label Component
+const Label = ({ children, htmlFor, className = '', required = false }) => (
+  <label
+    htmlFor={htmlFor}
+    className={`block text-sm font-medium text-gray-700 mb-1 ${className}`}
+  >
+    {children}
+    {required && <span className="text-red-500 ml-1">*</span>}
+  </label>
+);
+
   // Render Code Editor
   const renderCodeEditor = () => {
     return (
@@ -902,6 +1156,68 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
+
+      <Dialog open={isSubmissionModalOpen} onOpenChange={setIsSubmissionModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share Your Solution</DialogTitle>
+            <DialogDescription>
+              Provide a title and explanation for your submitted solution.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="title" className="text-right">
+                Title
+              </Label>
+              <Input
+                id="title"
+                value={submissionTitle}
+                onChange={(e) => setSubmissionTitle(e.target.value)}
+                placeholder="Give your solution a descriptive title"
+                className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="explanation" className="text-right">
+                Explanation
+              </Label>
+              <Textarea
+                id="explanation"
+                value={submissionExplanation}
+                onChange={(e) => setSubmissionExplanation(e.target.value)}
+                placeholder="Explain your solution approach, key techniques, or interesting CSS/JS features used"
+                className="col-span-3 min-h-[100px]"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Submitted Code</Label>
+              <div className="col-span-3 bg-gray-100 p-2 rounded max-h-[200px] overflow-y-auto">
+                <pre className="text-xs">{code}</pre>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsSubmissionModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={postPublicSubmission}
+              disabled={!submissionTitle.trim() || isRunning}
+            >
+              {isRunning ? 'Posting...' : 'Post Solution'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <header className={`bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10
         ${isDesktop ? 'py-6' : 'py-4'}`}>
@@ -975,6 +1291,14 @@ useEffect(() => {
                     <Check size={18} className="mr-2" />
                     Submit
                   </Button>
+                  {submissionStatus === 'accepted' && (
+                    <Button
+                      onClick={() => {openSubmissionModal()}}
+                      className="flex items-center"
+                    >
+                      {isRunning ? 'Posting...' : 'Post Publicly'}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

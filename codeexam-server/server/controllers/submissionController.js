@@ -340,20 +340,18 @@ exports.getPublicSubmissions = async (req, res, next) => {
 
     // Handle tab-specific sorting first, then apply sort parameter
     if (tabType === 'popular') {
-      // Popular submissions - those with high engagement in the last 30 days
-      orderBy = [
-        [Sequelize.literal(`(
-          COALESCE((SELECT COUNT(*) FROM submission_likes WHERE submission_likes.submission_id = Submission.id), 0) +
-          COALESCE((SELECT COUNT(*) FROM discussion_replies dr JOIN submission_discussions sd ON dr.discussion_id = sd.id WHERE sd.submission_id = Submission.id), 0)
-        )`), 'DESC'],
-        ['submitted_at', 'DESC']
-      ];
+  orderBy = [
+    [Sequelize.literal(`(
+      COALESCE((SELECT COUNT(DISTINCT submission_likes.id) FROM submission_likes WHERE submission_likes.submission_id = Submission.id), 0) +
+      COALESCE((SELECT COUNT(DISTINCT dr.id) FROM discussion_replies dr JOIN submission_discussions sd ON dr.discussion_id = sd.id WHERE sd.submission_id = Submission.id), 0)
+    )`), 'DESC'],
+    ['submitted_at', 'DESC']
+  ];
 
-      // Add date filter for popularity (last 30 days)
-      whereCondition.submitted_at = {
-        [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      };
-    } else if (tabType === 'trending') {
+  whereCondition.submitted_at = {
+    [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  };
+} else if (tabType === 'trending') {
       // Trending: submissions with recent activity (likes/comments in last 7 days)
       orderBy = [
         [Sequelize.literal(`(

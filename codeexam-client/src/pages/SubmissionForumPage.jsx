@@ -18,6 +18,7 @@ const SubmissionsForumPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDataReady, setIsDataReady] = useState(false);
   
   // Get user role from Redux store instead of local state
   const { userRole } = useSelector(state => state.auth);
@@ -38,6 +39,8 @@ const SubmissionsForumPage = () => {
     const fetchSubmissions = async () => {
       try {
         setIsLoading(true);
+        setIsDataReady(false);
+        
         const token = localStorage.getItem('codeexam_token');
         
         const response = await API.get('/api/submissions/public', {
@@ -48,16 +51,19 @@ const SubmissionsForumPage = () => {
         // Ensure isLiked is properly set for each submission
         const submissionsWithLikeStatus = (response.data.submissions || []).map(submission => ({
           ...submission,
-          isLiked: Boolean(submission.isLiked), // Convert to boolean
-          likes: submission.likes || 0 // Ensure likes is a number
+          isLiked: Boolean(submission.isLiked),
+          likes: submission.likes || 0
         }));
         
         setSubmissions(submissionsWithLikeStatus);
         setError(null);
+        setIsDataReady(true);
+        
       } catch (err) {
         console.error('Error fetching submissions:', err);
         setError('Failed to load submissions. Please try again later.');
         setSubmissions([]);
+        setIsDataReady(true);
       } finally {
         setIsLoading(false);
       }
@@ -65,6 +71,15 @@ const SubmissionsForumPage = () => {
 
     fetchSubmissions();
   }, [filter, sort, searchQuery, activeTab]);
+
+  // This useEffect runs after submissions are fetched and ready
+  useEffect(() => {
+    if (isDataReady && submissions.length > 0) {
+      console.log('Submissions are ready for rendering:', submissions);
+      console.log('First submission:', submissions[0]);
+      console.log('First submission discussions:', submissions[0]?.submission_discussions);
+    }
+  }, [submissions, isDataReady]);
 
   // Toggle Submission Expansion
   const toggleSubmission = (submissionId) => {
@@ -90,7 +105,6 @@ const SubmissionsForumPage = () => {
   // Fetch Comments
   const fetchComments = async (submissionId) => {
     try {
-      // Updated endpoint path
       const response = await API.get(`/api/comments/discussion/${submissionId}`);
       setComments(prev => ({ 
         ...prev, 
@@ -106,7 +120,6 @@ const SubmissionsForumPage = () => {
     if (!commentText.trim()) return;
     
     try {
-      // Updated endpoint path
       const response = await API.post(`/api/comments/discussion/${submissionId}`, {
         content: commentText
       });
@@ -134,12 +147,10 @@ const SubmissionsForumPage = () => {
     try {
       const token = localStorage.getItem('codeexam_token');
       
-      // Use the existing like endpoint
       const response = await API.post(`/api/comments/discussion/${submissionId}/like`, {}, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
       
-      // Update the submission state with the response data
       setSubmissions(prev => 
         prev.map(sub => 
           sub.id === submissionId 
@@ -155,6 +166,7 @@ const SubmissionsForumPage = () => {
       console.error('Error liking submission:', err);
     }
   };
+
   // Utility Functions
   const formatRelativeTime = (dateString) => {
     const date = new Date(dateString);
@@ -184,7 +196,6 @@ const SubmissionsForumPage = () => {
   };
 
   const LanguageBadge = ({ language }) => {
-    // Language ID to name mapping based on Judge0
     const languageMap = {
       45: 'Assembly',
       46: 'Bash',
@@ -257,10 +268,8 @@ const SubmissionsForumPage = () => {
       84: 'Visual Basic.Net'
     };
   
-    // Convert language ID to name if it's a number, otherwise use as is
     const languageName = typeof language === 'number' ? languageMap[language] || 'Unknown' : language;
   
-    // Determine color class based on language name
     const getColorClass = (lang) => {
       if (!lang) return 'bg-gray-500 text-white';
       
@@ -335,9 +344,15 @@ const SubmissionsForumPage = () => {
       return <div className="text-center py-10 text-red-500">{error}</div>;
     }
     
+    if (!isDataReady) {
+      return <div className="text-center py-10">Preparing submissions...</div>;
+    }
+    
     if (submissions.length === 0) {
       return <div className="text-center py-10">No submissions found.</div>;
     }
+
+    console.log('Rendering submissions now:', submissions.length);
     
     return (
       <div className="space-y-4">
@@ -348,14 +363,14 @@ const SubmissionsForumPage = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className='text-lg font-medium text-blue-700'>
-                    {submission.submission_discussions.title}
+                    {submission.submission_discussions?.title || 'No Title Available'}
                   </h2>
                   <h3 className="text-lg font-medium text-blue-600">
-                    Problem: {submission.problem.title}
+                    Problem: {submission.problem?.title || 'Unknown Problem'}
                   </h3>
                   <div className="flex items-center mt-1 space-x-2">
                     <span className="text-sm text-gray-600">
-                      by {submission.user.username}
+                      by {submission.user?.username || 'Anonymous'}
                     </span>
                     <span className="text-xs text-gray-500">
                       {formatRelativeTime(submission.created_at)}
@@ -388,7 +403,7 @@ const SubmissionsForumPage = () => {
                   onClick={() => toggleComments(submission.id)}
                 >
                   <MessageSquare className="h-4 w-4 mr-1" />
-                  <span>{submission.commentCount}</span>
+                  <span>{submission.commentCount || 0}</span>
                 </div>
                 <div 
                   className="flex items-center cursor-pointer ml-auto" 
@@ -412,7 +427,7 @@ const SubmissionsForumPage = () => {
                   </pre>
                 </div>
                 
-                {submission.submission_discussions.content && (
+                {submission.submission_discussions?.content && (
                   <div className="mb-4">
                     <h3 className="text-md font-medium mb-2">Explanation:</h3>
                     <p className="text-gray-700">{submission.submission_discussions.content}</p>
@@ -440,7 +455,7 @@ const SubmissionsForumPage = () => {
                         <p className="mt-1 text-gray-700">{comment.content}</p>
                         <div className="mt-2 text-xs text-gray-500 flex items-center">
                           <ThumbsUp className="h-3 w-3 mr-1" />
-                          <span>{comment.likes}</span>
+                          <span>{comment.likes || 0}</span>
                         </div>
                       </div>
                     ))}
