@@ -78,7 +78,8 @@ const MySubmissionsPage = () => {
       if (response.data.success) {
         setSubmissions(response.data.submissions || []);
         setTotalSubmissions(response.data.count || 0);
-        setTotalPages(Math.ceil(response.data.count / itemsPerPage));
+        // Use totalPages from server response, fallback to calculation if not available
+        setTotalPages(response.data.totalPages || Math.ceil((response.data.count || 0) / itemsPerPage));
         setError(null);
       } else {
         setError(response.data.message || 'Failed to load submissions');
@@ -256,7 +257,7 @@ const MySubmissionsPage = () => {
             </div>
             <input
               type="text"
-              placeholder="Search by problem title..."
+              placeholder="Search by problem title, username, or language..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -279,8 +280,12 @@ const MySubmissionsPage = () => {
                 <option value="accepted">Accepted</option>
                 <option value="wrong_answer">Wrong Answer</option>
                 <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="judging">Judging</option>
                 <option value="compilation_error">Compilation Error</option>
                 <option value="runtime_error">Runtime Error</option>
+                <option value="time_limit_exceeded">Time Limit Exceeded</option>
+                <option value="memory_limit_exceeded">Memory Limit Exceeded</option>
               </select>
               <Filter size={16} className="absolute right-3 bottom-2.5 text-gray-400 pointer-events-none" />
             </div>
@@ -320,8 +325,12 @@ const MySubmissionsPage = () => {
               >
                 <option value="date-desc">Newest First</option>
                 <option value="date-asc">Oldest First</option>
+                <option value="status-asc">Status A-Z</option>
+                <option value="status-desc">Status Z-A</option>
                 <option value="score-desc">Highest Score</option>
                 <option value="score-asc">Lowest Score</option>
+                <option value="problem-asc">Problem A-Z</option>
+                <option value="problem-desc">Problem Z-A</option>
               </select>
               <Filter size={16} className="absolute right-3 bottom-2.5 text-gray-400 pointer-events-none" />
             </div>

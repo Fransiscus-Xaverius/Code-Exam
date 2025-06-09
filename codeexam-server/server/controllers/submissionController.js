@@ -649,12 +649,55 @@ exports.getSubmissions = async (req, res, next) => {
       filter.language = req.query.language;
     }
 
+    // Search functionality
+    let searchCondition = {};
+    if (req.query.search) {
+      const searchTerm = req.query.search.trim();
+      if (searchTerm) {
+        searchCondition = {
+          [Op.or]: [
+            { '$problem.title$': { [Op.like]: `%${searchTerm}%` } },
+            { '$user.username$': { [Op.like]: `%${searchTerm}%` } },
+            { language: { [Op.like]: `%${searchTerm}%` } }
+          ]
+        };
+      }
+    }
+
+    // Combine filter with search condition
+    const whereCondition = {
+      ...filter,
+      ...searchCondition
+    };
+
+    // Sorting logic
+    let orderBy = [['submitted_at', 'DESC']]; // default
+    const sortBy = req.query.sortBy || 'date';
+    const sortOrder = req.query.sortOrder || 'desc';
+
+    switch (sortBy) {
+      case 'date':
+        orderBy = [['submitted_at', sortOrder.toUpperCase()]];
+        break;
+      case 'status':
+        orderBy = [['status', sortOrder.toUpperCase()], ['submitted_at', 'DESC']];
+        break;
+      case 'score':
+        orderBy = [['score', sortOrder.toUpperCase()], ['submitted_at', 'DESC']];
+        break;
+      case 'problem':
+        orderBy = [['problem', 'title', sortOrder.toUpperCase()], ['submitted_at', 'DESC']];
+        break;
+      default:
+        orderBy = [['submitted_at', 'DESC']];
+    }
+
     // Get submissions with count
     const { count, rows: submissions } = await Submission.findAndCountAll({
-      where: filter,
+      where: whereCondition,
       limit,
       offset: startIndex,
-      order: [['submitted_at', 'DESC']],
+      order: orderBy,
       include: [
         {
           model: User,
@@ -678,15 +721,16 @@ exports.getSubmissions = async (req, res, next) => {
 
     // Pagination result
     const pagination = {};
+    const totalPages = Math.ceil(count / limit);
 
-    if (startIndex + limit < count) {
+    if (page < totalPages) {
       pagination.next = {
         page: page + 1,
         limit
       };
     }
 
-    if (startIndex > 0) {
+    if (page > 1) {
       pagination.prev = {
         page: page - 1,
         limit
@@ -696,6 +740,8 @@ exports.getSubmissions = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count,
+      totalPages,
+      currentPage: page,
       pagination,
       submissions
     });
@@ -914,7 +960,7 @@ exports.getSubmissionStats = async (req, res, next) => {
     const problemCounts = await Submission.findAll({
       attributes: [
         'problem_id',
-        [sequelize.fn('COUNT', sequelize.col('Submission.id')), 'count']
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
       ],
       where: { user_id: userId },
       group: ['problem_id'],
@@ -922,8 +968,7 @@ exports.getSubmissionStats = async (req, res, next) => {
         {
           model: Problem,
           as: 'problem',
-          attributes: ['title'],
-          required: false
+          attributes: ['title']
         }
       ]
     });
@@ -947,8 +992,7 @@ exports.getSubmissionStats = async (req, res, next) => {
         {
           model: Problem,
           as: 'problem',
-          attributes: ['id', 'title'],
-          required: false
+          attributes: ['id', 'title']
         }
       ],
       attributes: ['id', 'status', 'score', 'submitted_at']
@@ -964,7 +1008,6 @@ exports.getSubmissionStats = async (req, res, next) => {
       }
     });
   } catch (error) {
-    console.error('Error getting submission stats:', error);
     next(error);
   }
 };
