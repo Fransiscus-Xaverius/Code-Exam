@@ -56,7 +56,7 @@ const LoginPage = () => {
         setAccountStatus(data.accountStatus);
         setLocalLoading(false);
         // Reset Redux loading state properly
-        dispatch(loginFailure(data.message));
+        dispatch(loginFailure(data?.message || 'Login failed'));
         return;
       }
 
