@@ -487,29 +487,6 @@ const SubmissionsForumPage = () => {
               </div>
             </div>
           </div>
-          
-          <div className="flex space-x-2">
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg"
-            >
-              <option value="all">All Submissions</option>
-              <option value="accepted">Accepted Only</option>
-              <option value="my">My Submissions</option>
-            </select>
-            
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="most_liked">Most Liked</option>
-              <option value="most_discussed">Most Discussed</option>
-            </select>
-          </div>
         </div>
         
         {/* Tabs */}
@@ -523,7 +500,7 @@ const SubmissionsForumPage = () => {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Popular
+              Popular (Last 30 Days)
             </button>
             <button
               onClick={() => setActiveTab('recent')}
