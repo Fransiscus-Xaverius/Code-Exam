@@ -22,24 +22,40 @@ const CompetitionListPage = () => {
   const [competitions, setCompetitions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [totalCount, setTotalCount] = useState(0);
 
   // UI state
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [filtersVisible, setFiltersVisible] = useState(false);
 
-  // Filter state
+  // Filter state with debounced search
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'upcoming', 'active', 'past'
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 9; // Show more competitions per page than problems
+  const itemsPerPage = 9;
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const navigate = useNavigate();
   const { userRole, user, token } = useSelector(state => state.auth);
+
+  // Debounce search term to avoid too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, statusFilter, sortBy, sortOrder]);
 
   // Toggle mobile sidebar
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -60,57 +76,76 @@ const CompetitionListPage = () => {
     navigate(`/competition/edit/${id}`);
   };
 
-  // Fetch competitions from API
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm('');
+    setDebouncedSearchTerm('');
+    setStatusFilter('all');
+    setSortBy('date');
+    setSortOrder('desc');
+  };
+
+  // Fetch competitions from API with filters
   const fetchCompetitions = async () => {
     try {
       setIsLoading(true);
+      
+      // Build query parameters
       const params = new URLSearchParams({
-        page: currentPage,
-        limit: itemsPerPage,
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
         sortBy,
         sortOrder
       });
 
+      // Add optional filters
       if (statusFilter !== 'all') {
         params.append('status', statusFilter);
       }
 
-      if (searchTerm) {
-        params.append('search', searchTerm);
+      if (debouncedSearchTerm.trim()) {
+        params.append('search', debouncedSearchTerm.trim());
       }
 
       const response = await API.get(`/api/competitions?${params}`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
-      console.log({ response, responseData: response.data })
+
+      console.log({ response, responseData: response.data });
 
       if (response.data.success) {
-        setCompetitions(response.data.data || []);
-        setTotalPages(Math.ceil(response.data.count / itemsPerPage));
+        const competitionsData = response.data.data || [];
+        const count = response.data.count || response.data.total || 0;
+        
+        setCompetitions(competitionsData);
+        setTotalCount(count);
         setError(null);
       } else {
         setError(response.data.message || 'Failed to load competitions');
         setCompetitions([]);
+        setTotalCount(0);
       }
     } catch (err) {
       console.error('Error fetching competitions:', err);
       setError('Failed to load competitions. Please try again later.');
       setCompetitions([]);
+      setTotalCount(0);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Fetch competitions when dependencies change
   useEffect(() => {
     if (token) {
       fetchCompetitions();
     }
-  }, [token, searchTerm, statusFilter, sortBy, sortOrder, currentPage]);
+  }, [token, debouncedSearchTerm, statusFilter, sortBy, sortOrder, currentPage]);
 
   // Skeleton loader for better UX during loading
   const renderSkeletonLoader = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {[...Array(6)].map((_, index) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+      {[...Array(8)].map((_, index) => (
         <Card key={index} className="p-0 overflow-hidden animate-pulse">
           <div className="h-2 w-full bg-gray-200"></div>
           <div className="p-4">
@@ -119,20 +154,16 @@ const CompetitionListPage = () => {
             <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
             <div className="space-y-2 mt-4">
               <div className="flex items-center">
-                <div className="w-4 h-4 bg-gray-200 rounded-full mr-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                <div className="w-4 h-4 bg-gray-200 rounded-full mr-2 flex-shrink-0"></div>
+                <div className="h-4 bg-gray-200 rounded flex-1"></div>
               </div>
               <div className="flex items-center">
-                <div className="w-4 h-4 bg-gray-200 rounded-full mr-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-gray-200 rounded-full mr-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                <div className="w-4 h-4 bg-gray-200 rounded-full mr-2 flex-shrink-0"></div>
+                <div className="h-4 bg-gray-200 rounded flex-1"></div>
               </div>
             </div>
-            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between">
-              <div className="w-24 h-8 bg-gray-200 rounded"></div>
+            <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
+              <div className="w-20 h-8 bg-gray-200 rounded"></div>
               <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
             </div>
           </div>
@@ -141,7 +172,7 @@ const CompetitionListPage = () => {
     </div>
   );
 
-  // Mobile sidebar component - similar to Dashboard.jsx
+  // Mobile sidebar component
   const MobileSidebar = () => (
     <div
       className={`fixed inset-0 bg-gray-800 bg-opacity-75 z-30 transition-opacity duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
@@ -165,13 +196,12 @@ const CompetitionListPage = () => {
           </button>
         </div>
 
-        {/* Same sidebar content as in Dashboard.jsx */}
-        <div className="p-4">
+        <div className="p-4 overflow-y-auto h-full pb-20">
           <div className="flex items-center p-3 mb-6 bg-blue-50 rounded-lg">
-            <Users className="text-blue-600 mr-3" size={24} />
-            <div>
-              <p className="font-medium">{user?.username || 'User'}</p>
-              <p className="text-sm text-gray-500">
+            <Users className="text-blue-600 mr-3 flex-shrink-0" size={24} />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium truncate">{user?.username || 'User'}</p>
+              <p className="text-sm text-gray-500 truncate">
                 {userRole === 'admin' ? 'Administrator' :
                   userRole === 'judge' ? 'Judge' : 'Competitor'}
               </p>
@@ -180,14 +210,13 @@ const CompetitionListPage = () => {
 
           <nav className="space-y-2">
             <a href="/dashboard" className="flex items-center p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-              <Code className="mr-3" size={20} />
+              <Code className="mr-3 flex-shrink-0" size={20} />
               <span>Problems</span>
             </a>
             <a href="/competitions" className="flex items-center p-3 text-blue-600 bg-blue-50 rounded-lg font-medium">
-              <Trophy className="mr-3" size={20} />
+              <Trophy className="mr-3 flex-shrink-0" size={20} />
               <span>Competitions</span>
             </a>
-            {/* Other nav items from Dashboard.jsx */}
           </nav>
         </div>
       </div>
@@ -207,23 +236,23 @@ const CompetitionListPage = () => {
         title = "Competitions";
         description = "Review and judge competition submissions";
         break;
-      default: // competitor
+      default:
         title = "Coding Competitions";
         description = "Join competitions to improve your skills and compete with others";
     }
 
     return (
-      <Card className="p-4 sm:p-6 mb-6">
+      <Card className="p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h1>
-            <p className="mt-1 text-sm text-gray-500">{description}</p>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">{title}</h1>
+            <p className="mt-1 text-sm sm:text-base text-gray-500">{description}</p>
           </div>
 
           {userRole === 'admin' && (
             <Button
               onClick={handleCreateCompetition}
-              className="w-full sm:w-auto group relative inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+              className="w-full sm:w-auto flex-shrink-0 group relative inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
             >
               <Plus
                 size={18}
@@ -237,67 +266,94 @@ const CompetitionListPage = () => {
     );
   };
 
-  // Filters section - similar to Dashboard.jsx
+  // Enhanced filters section with better responsive design
   const renderFilters = () => (
-    <Card className="p-4 mb-6">
+    <Card className="p-4 mb-4 sm:mb-6">
       {/* Mobile Filters Toggle */}
-      <div className="md:hidden flex justify-between items-center mb-3">
+      <div className="sm:hidden flex justify-between items-center mb-3">
         <h3 className="font-medium text-gray-700">Search & Filters</h3>
         <button
           onClick={toggleFilters}
-          className="text-blue-600 flex items-center space-x-1"
+          className="text-blue-600 flex items-center space-x-1 p-2 rounded-lg hover:bg-blue-50 transition-colors"
         >
-          <span>{filtersVisible ? 'Hide' : 'Show'}</span>
+          <span className="text-sm">{filtersVisible ? 'Hide' : 'Show'}</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${filtersVisible ? 'rotate-180' : ''}`} />
         </button>
       </div>
 
-      {/* Filter content - hidden on mobile unless expanded */}
-      <div className={`${filtersVisible ? 'block' : 'hidden md:block'}`}>
-        <div className="flex flex-col md:flex-row gap-4">
-          <SearchBar
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search competitions..."
-            className="w-full md:flex-1"
-          />
+      {/* Filter content */}
+      <div className={`${filtersVisible ? 'block' : 'hidden sm:block'}`}>
+        <div className="flex flex-col gap-4">
+          {/* Search bar - full width on mobile */}
+          <div className="w-full">
+            <SearchBar
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search competitions..."
+              className="w-full"
+            />
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:w-auto md:flex md:gap-4">
+          {/* Filter dropdowns */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative">
               <label htmlFor="status-filter" className="text-xs text-gray-500 mb-1 block">Status</label>
               <select
                 id="status-filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border rounded-lg bg-white hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full appearance-none pr-8"
+                className="w-full px-3 py-2 border rounded-lg bg-white hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-8"
               >
-                <option value="all">All Competitions</option>
+                <option value="all">All Status</option>
                 <option value="upcoming">Upcoming</option>
                 <option value="active">Active</option>
                 <option value="past">Past</option>
               </select>
-              <Filter size={16} className="absolute right-3 bottom-2.5 text-gray-400 pointer-events-none" />
+              <Filter size={16} className="absolute right-3 top-8 text-gray-400 pointer-events-none" />
             </div>
 
             <div className="relative">
-              <label htmlFor="sort-order" className="text-xs text-gray-500 mb-1 block">Sort By</label>
+              <label htmlFor="sort-by" className="text-xs text-gray-500 mb-1 block">Sort By</label>
+              <select
+                id="sort-by"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg bg-white hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-8"
+              >
+                <option value="date">Date</option>
+                <option value="name">Name</option>
+                <option value="participants">Participants</option>
+              </select>
+              <Filter size={16} className="absolute right-3 top-8 text-gray-400 pointer-events-none" />
+            </div>
+
+            <div className="relative">
+              <label htmlFor="sort-order" className="text-xs text-gray-500 mb-1 block">Order</label>
               <select
                 id="sort-order"
-                value={`${sortBy}-${sortOrder}`}
-                onChange={(e) => {
-                  const [newSortBy, newSortOrder] = e.target.value.split('-');
-                  setSortBy(newSortBy);
-                  setSortOrder(newSortOrder);
-                }}
-                className="px-3 py-2 border rounded-lg bg-white hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full appearance-none pr-8"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg bg-white hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-8"
               >
-                <option value="date-desc">Date (Newest First)</option>
-                <option value="date-asc">Date (Oldest First)</option>
-                <option value="name-asc">Name (A-Z)</option>
-                <option value="name-desc">Name (Z-A)</option>
-                <option value="participants-desc">Most Popular</option>
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
               </select>
-              <Filter size={16} className="absolute right-3 bottom-2.5 text-gray-400 pointer-events-none" />
+              <Filter size={16} className="absolute right-3 top-8 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* Results count and clear filters */}
+            <div className="flex flex-col justify-end gap-2">
+              <div className="text-sm text-gray-500">
+                <span className="font-medium">{totalCount}</span> competition{totalCount !== 1 ? 's' : ''}
+                {(searchTerm || statusFilter !== 'all') && (
+                  <button
+                    onClick={clearFilters}
+                    className="ml-2 text-blue-600 hover:text-blue-800 underline text-xs"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -305,7 +361,7 @@ const CompetitionListPage = () => {
     </Card>
   );
 
-  // Competitions grid section
+  // Enhanced competitions grid section
   const renderCompetitionCards = () => {
     if (isLoading) {
       return renderSkeletonLoader();
@@ -314,17 +370,28 @@ const CompetitionListPage = () => {
     if (error) {
       return (
         <Card className="p-6 text-center">
-          <div className="text-red-500 mb-4">{error}</div>
-          <Button onClick={fetchCompetitions}>Try Again</Button>
+          <div className="text-red-500 mb-4 text-sm sm:text-base">{error}</div>
+          <Button onClick={fetchCompetitions} className="px-6 py-2">Try Again</Button>
         </Card>
       );
     }
 
     if (competitions.length === 0) {
+      const hasFilters = searchTerm || statusFilter !== 'all';
+      
       return (
-        <Card className="p-8 text-center">
-          <div className="text-gray-500 mb-4">No competitions found</div>
-          {userRole === 'admin' && (
+        <Card className="p-6 sm:p-8 text-center">
+          <div className="text-gray-500 mb-4 text-sm sm:text-base">
+            {hasFilters ? 'No competitions match your filters' : 'No competitions found'}
+          </div>
+          {hasFilters ? (
+            <Button
+              onClick={clearFilters}
+              className="inline-flex items-center justify-center px-6 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out rounded-lg"
+            >
+              Clear Filters
+            </Button>
+          ) : userRole === 'admin' && (
             <Button
               onClick={handleCreateCompetition}
               className="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out rounded-lg shadow-sm hover:shadow-md"
@@ -338,7 +405,7 @@ const CompetitionListPage = () => {
     }
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         {competitions.map((competition) => (
           <CompetitionCard
             key={competition.id}
@@ -355,7 +422,7 @@ const CompetitionListPage = () => {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Desktop Sidebar - Hidden on mobile */}
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <Sidebar />
       </div>
 
@@ -363,9 +430,9 @@ const CompetitionListPage = () => {
       <MobileSidebar />
 
       {/* Main Content */}
-      <div className="flex-1 md:ml-64">
+      <div className="flex-1 lg:ml-64">
         {/* Mobile Header */}
-        <div className="md:hidden bg-white p-4 shadow-sm border-b sticky top-0 z-20">
+        <div className="lg:hidden bg-white p-4 shadow-sm border-b sticky top-0 z-20">
           <div className="flex items-center justify-between">
             <button
               onClick={toggleSidebar}
@@ -376,15 +443,14 @@ const CompetitionListPage = () => {
             </button>
             <div className="flex items-center space-x-2">
               <Trophy className="text-blue-600" size={24} />
-              <span className="font-bold text-xl">Competitions</span>
+              <span className="font-bold text-lg sm:text-xl">Competitions</span>
             </div>
-            {/* Right side spacer for symmetry */}
             <div className="w-10"></div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="p-4">
+        <div className="p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
             {/* Page header */}
             {renderHeader()}

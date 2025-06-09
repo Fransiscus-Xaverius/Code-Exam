@@ -152,7 +152,7 @@ const CompetitionCard = ({ competition, userRole, onView, onEdit }) => {
     };
 
     // Check if competition has registered participants
-    const hasParticipants = competition.participants_count && competition.participants_count > 0;
+    const hasParticipants = competition.participantCount && competition.participantCount > 0;
 
     return (
         <Card className="overflow-hidden flex flex-col h-full shadow-sm hover:shadow-md transition-shadow duration-300 group">
@@ -189,7 +189,7 @@ const CompetitionCard = ({ competition, userRole, onView, onEdit }) => {
                         <Users size={16} className="mr-2 text-gray-400 flex-shrink-0" />
                         <span>
                             {hasParticipants ? (
-                                `${competition.participants_count} participant${competition.participants_count !== 1 ? 's' : ''}`
+                                `${competition.participantCount} participant${competition.participants_count !== 1 ? 's' : ''}`
                             ) : (
                                 'No participants yet'
                             )}

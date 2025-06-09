@@ -87,27 +87,109 @@ exports.createCompetition = async (req, res, next) => {
 // @access  Public
 exports.getCompetitions = async (req, res, next) => {
   try {
-    // Add pagination
+    // Extract pagination parameters
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const startIndex = (page - 1) * limit;
     
+    // Extract filter and sort parameters
+    const { search, status, sortBy = 'date', sortOrder = 'desc' } = req.query;
+    
     const token = req.header('Authorization')?.replace('Bearer ', '');
+    let decoded = null;
+    
+    // Verify token if provided
+    if (token) {
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+      } catch (error) {
+        // Token invalid, continue as guest
+        req.user = null;
+      }
+    }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-
-    // Add filtering
+    // Build base filter
     const filter = {};
+    
+    // Public visibility filter (non-admin users only see public competitions)
     if (!req.user || req.user.role !== 'admin') {
       filter.is_public = true;
+    }
+
+    // Search filter - using 'name' field from your model
+    if (search && search.trim()) {
+      filter[Sequelize.Op.or] = [
+        {
+          name: {
+            [Sequelize.Op.iLike]: `%${search.trim()}%`
+          }
+        },
+        {
+          description: {
+            [Sequelize.Op.iLike]: `%${search.trim()}%`
+          }
+        }
+      ];
+    }
+
+    // Status filter
+    if (status && status !== 'all') {
+      const now = new Date();
+      
+      switch (status) {
+        case 'upcoming':
+          filter.start_time = {
+            [Sequelize.Op.gt]: now
+          };
+          break;
+        case 'active':
+          filter[Sequelize.Op.and] = [
+            {
+              start_time: {
+                [Sequelize.Op.lte]: now
+              }
+            },
+            {
+              end_time: {
+                [Sequelize.Op.gt]: now
+              }
+            }
+          ];
+          break;
+        case 'past':
+          filter.end_time = {
+            [Sequelize.Op.lt]: now
+          };
+          break;
+      }
+    }
+
+    // Build sorting options
+    let orderBy = [];
+    
+    switch (sortBy) {
+      case 'name':
+        orderBy = [['name', sortOrder.toUpperCase()]];
+        break;
+      case 'participants':
+        // Sort by participant count
+        orderBy = [
+          [Sequelize.literal('(SELECT COUNT(*) FROM competition_participants WHERE competition_participants.competition_id = Competition.id)'), sortOrder.toUpperCase()]
+        ];
+        break;
+      case 'date':
+      default:
+        orderBy = [['start_time', sortOrder.toUpperCase()]];
+        break;
     }
 
     // Build attributes array with isRegistered subquery
     const attributes = {
       include: []
     };
-    console.log(req.user)
+
+    // Add isRegistered field for authenticated users
     if (req.user) {
       attributes.include.push([
         Sequelize.literal(`(
@@ -125,12 +207,22 @@ exports.getCompetitions = async (req, res, next) => {
       ]);
     }
 
+    // Add participant count
+    attributes.include.push([
+      Sequelize.literal(`(
+        SELECT COUNT(*)
+        FROM competition_participants
+        WHERE competition_participants.competition_id = Competition.id
+      )`),
+      'participantCount'
+    ]);
+
     // Get competitions with count
     const { count, rows: competitions } = await Competition.findAndCountAll({
       where: filter,
       limit,
       offset: startIndex,
-      order: [['start_time', 'ASC']],
+      order: orderBy,
       attributes,
       include: [
         {
@@ -138,10 +230,11 @@ exports.getCompetitions = async (req, res, next) => {
           as: 'creator',
           attributes: ['id', 'username', 'email']
         }
-      ]
+      ],
+      distinct: true // Important for accurate count when using includes
     });
 
-    // Pagination result
+    // Build pagination info
     const pagination = {};
     const totalPages = Math.ceil(count / limit);
     
@@ -153,13 +246,32 @@ exports.getCompetitions = async (req, res, next) => {
       pagination.prev = { page: page - 1, limit };
     }
 
+    // Add computed fields to each competition
+    const enrichedCompetitions = competitions.map(competition => {
+      const comp = competition.toJSON();
+      const now = new Date();
+      
+      // Determine competition status
+      if (now < new Date(comp.start_time)) {
+        comp.status = 'upcoming';
+      } else if (now >= new Date(comp.start_time) && now <= new Date(comp.end_time)) {
+        comp.status = 'active';
+      } else {
+        comp.status = 'past';
+      }
+      
+      return comp;
+    });
+
     res.status(200).json({
       success: true,
       count,
+      total: count, // Frontend expects both count and total
       pagination,
-      data: competitions
+      data: enrichedCompetitions
     });
   } catch (error) {
+    console.error('Error fetching competitions:', error);
     next(error);
   }
 };
