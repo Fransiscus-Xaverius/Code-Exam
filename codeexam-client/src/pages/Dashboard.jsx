@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   UserCircle, Code, Trophy, Users, Settings, Database, CheckCircle,
   HelpCircle, LogOut, Edit, Trash2, Plus, Search, Filter, Menu, X,
@@ -32,6 +32,7 @@ const CodeExamDashboard = () => {
   const [error, setError] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, problem: null });
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [sortBy, setSortBy] = useState('title');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -39,6 +40,7 @@ const CodeExamDashboard = () => {
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [pendingSubmissions, setPendingSubmissions] = useState(0);
   const [activeCompetition, setActiveCompetition] = useState(null);
 
@@ -49,6 +51,22 @@ const CodeExamDashboard = () => {
 
   // Define the number of items per page
   const itemsPerPage = 10;
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchTerm, difficultyFilter, sortBy, sortOrder]);
 
   // Toggle mobile sidebar
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -66,13 +84,23 @@ const CodeExamDashboard = () => {
     navigate('/submissions/pending');
   };
 
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm('');
+    setDebouncedSearchTerm('');
+    setDifficultyFilter('all');
+    setSortBy('title');
+    setSortOrder('asc');
+    setCurrentPage(1);
+  };
+
   // Fetch problems from API
-  const fetchProblems = async () => {
+  const fetchProblems = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
-        page: currentPage,
-        limit: itemsPerPage
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString()
       });
 
       // Add filters if they're not default values
@@ -80,26 +108,33 @@ const CodeExamDashboard = () => {
         params.append('difficulty', difficultyFilter);
       }
 
-      if (searchTerm) {
-        params.append('search', searchTerm);
+      if (debouncedSearchTerm.trim()) {
+        params.append('search', debouncedSearchTerm.trim());
       }
 
       // Add sorting parameters
       params.append('sortBy', sortBy);
       params.append('sortOrder', sortOrder);
 
-      const response = await API.get(`/api/problems?${params}`, {
+      console.log('API Request URL:', `/api/problems?${params.toString()}`);
+
+      const response = await API.get(`/api/problems?${params.toString()}`, {
         headers: { Authorization: token ? `Bearer ${token}` : '' }
       });
+
+      console.log('API Response:', response.data);
 
       // Update to match the server response structure
       if (response.data.success) {
         setProblems(response.data.problems || []);
-        setTotalPages(Math.ceil(response.data.count / itemsPerPage));
+        setTotalCount(response.data.count || 0);
+        setTotalPages(Math.ceil((response.data.count || 0) / itemsPerPage));
         setError(null);
       } else {
         setError(response.data.message || 'Failed to load problems');
         setProblems([]);
+        setTotalCount(0);
+        setTotalPages(1);
       }
 
       // For judge role, fetch pending submissions count
@@ -139,10 +174,12 @@ const CodeExamDashboard = () => {
       console.error('Error fetching problems:', err);
       setError('Failed to load problems. Please try again later.');
       setProblems([]);
+      setTotalCount(0);
+      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, userRole, debouncedSearchTerm, difficultyFilter, sortBy, sortOrder, currentPage, itemsPerPage]);
 
   // Skeleton loader for better UX during loading
   const renderSkeletonLoader = () => (
@@ -381,73 +418,166 @@ const CodeExamDashboard = () => {
     );
   };
 
-  const renderFilters = () => (
-    <Card className="p-4 mb-6">
-      {/* Mobile Filters Toggle */}
-      <div className="md:hidden flex justify-between items-center mb-3">
-        <h3 className="font-medium text-gray-700">Search & Filters</h3>
-        <button
-          onClick={toggleFilters}
-          className="text-blue-600 flex items-center space-x-1"
-        >
-          <span>{filtersVisible ? 'Hide' : 'Show'}</span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${filtersVisible ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
+  const renderFilters = () => {
+    const hasActiveFilters = debouncedSearchTerm.trim() || difficultyFilter !== 'all' || sortBy !== 'title' || sortOrder !== 'asc';
+    
+    return (
+      <Card className="p-4 sm:p-6 mb-6 border border-gray-200 shadow-sm">
+        {/* Mobile Filters Toggle */}
+        <div className="lg:hidden flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2">
+            <Search size={18} className="text-gray-500" />
+            <h3 className="font-semibold text-gray-800">Search & Filters</h3>
+            {hasActiveFilters && (
+              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                Active
+              </span>
+            )}
+          </div>
+          <button
+            onClick={toggleFilters}
+            className="flex items-center gap-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            <span className="font-medium">{filtersVisible ? 'Hide' : 'Show'}</span>
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${filtersVisible ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
 
-      {/* Filter content - hidden on mobile unless expanded */}
-      <div className={`${filtersVisible ? 'block' : 'hidden md:block'}`}>
-        <div className="flex flex-col md:flex-row gap-4">
-          <SearchBar
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search problems..."
-            className="w-full md:flex-1"
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:w-auto md:flex md:gap-4">
+        {/* Filter content - always visible on desktop, toggleable on mobile */}
+        <div className={`${filtersVisible ? 'block' : 'hidden lg:block'}`}>
+          {/* Search Bar */}
+          <div className="mb-4 lg:mb-6">
             <div className="relative">
-              <label htmlFor="difficulty-filter" className="text-xs text-gray-500 mb-1 block">Difficulty</label>
-              <select
-                id="difficulty-filter"
-                value={difficultyFilter}
-                onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="px-3 py-2 border rounded-lg bg-white hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full appearance-none pr-8"
-              >
-                <option value="all">All Difficulties</option>
-                <option value="Easy">Easy</option>
-                <option value="Medium">Medium</option>
-                <option value="Hard">Hard</option>
-              </select>
-              <Filter size={16} className="absolute right-3 bottom-2.5 text-gray-400 pointer-events-none" />
-            </div>
-
-            <div className="relative">
-              <label htmlFor="sort-order" className="text-xs text-gray-500 mb-1 block">Sort By</label>
-              <select
-                id="sort-order"
-                value={`${sortBy}-${sortOrder}`}
-                onChange={(e) => {
-                  const [newSortBy, newSortOrder] = e.target.value.split('-');
-                  setSortBy(newSortBy);
-                  setSortOrder(newSortOrder);
-                }}
-                className="px-3 py-2 border rounded-lg bg-white hover:border-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full appearance-none pr-8"
-              >
-                <option value="title-asc">Title (A-Z)</option>
-                <option value="title-desc">Title (Z-A)</option>
-                <option value="difficulty-asc">Difficulty (Easy-Hard)</option>
-                <option value="difficulty-desc">Difficulty (Hard-Easy)</option>
-                <option value="points-asc">Points (Low-High)</option>
-                <option value="points-desc">Points (High-Low)</option>
-              </select>
-              <Filter size={16} className="absolute right-3 bottom-2.5 text-gray-400 pointer-events-none" />
+              <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search problems by title or description..."
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Filter Controls */}
+          <div className="flex flex-col lg:flex-row gap-4 lg:items-end">
+            {/* Difficulty Filter */}
+            <div className="flex-1 lg:max-w-xs">
+              <label htmlFor="difficulty-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Difficulty Level
+              </label>
+              <div className="relative">
+                <select
+                  id="difficulty-filter"
+                  value={difficultyFilter}
+                  onChange={(e) => setDifficultyFilter(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none pr-10 text-sm"
+                >
+                  <option value="all">All Difficulties</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Sort By Filter */}
+            <div className="flex-1 lg:max-w-xs">
+              <label htmlFor="sort-by" className="block text-sm font-medium text-gray-700 mb-2">
+                Sort By
+              </label>
+              <div className="relative">
+                <select
+                  id="sort-by"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none pr-10 text-sm"
+                >
+                  <option value="title">Title</option>
+                  <option value="difficulty">Difficulty</option>
+                  <option value="points">Points</option>
+                  <option value="created_at">Created Date</option>
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Sort Order Filter */}
+            <div className="flex-1 lg:max-w-xs">
+              <label htmlFor="sort-order" className="block text-sm font-medium text-gray-700 mb-2">
+                Order
+              </label>
+              <div className="relative">
+                <select
+                  id="sort-order"
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none pr-10 text-sm"
+                >
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <div className="flex-shrink-0">
+                <button
+                  onClick={clearFilters}
+                  className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <X size={16} />
+                  Clear Filters
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Results Summary */}
+          {!isLoading && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm text-gray-600">
+                <div>
+                  Showing {problems.length} of {totalCount} problems
+                  {hasActiveFilters && ' (filtered)'}
+                </div>
+                {hasActiveFilters && (
+                  <div className="flex flex-wrap gap-2">
+                    {debouncedSearchTerm && (
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                        Search: "{debouncedSearchTerm}"
+                      </span>
+                    )}
+                    {difficultyFilter !== 'all' && (
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                        {difficultyFilter}
+                      </span>
+                    )}
+                    {(sortBy !== 'title' || sortOrder !== 'asc') && (
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                        Sort: {sortBy} ({sortOrder})
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   // Mobile sidebar component
   const MobileSidebar = () => (
@@ -511,14 +641,6 @@ const CodeExamDashboard = () => {
               <span>Settings</span>
             </a>
 
-            {/* <button
-              onClick={handleToggleRole}
-              className="flex w-full items-center p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              <UserCircle className="mr-3" size={20} />
-              <span>Switch Role</span>
-            </button> */}
-
             <button
               onClick={handleLogout}
               className="flex w-full items-center p-3 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
@@ -539,7 +661,7 @@ const CodeExamDashboard = () => {
     } else {
       navigate('/login');
     }
-  }, [token, userRole, searchTerm, difficultyFilter, sortBy, sortOrder, currentPage, navigate]);
+  }, [fetchProblems, token, navigate]);
 
   const handleToggleRole = () => {
     // dispatch(toggleUserRole());

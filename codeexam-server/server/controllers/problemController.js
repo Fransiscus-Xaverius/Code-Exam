@@ -1,5 +1,6 @@
 const Problem = require('../models/Problem');
 const User = require('../models/User');
+const { Op } = require('sequelize');
 
 // @desc    Create a new problem
 // @route   POST /api/problems
@@ -85,20 +86,52 @@ exports.getProblems = async (req, res, next) => {
     const limit = parseInt(req.query.limit, 10) || 10;
     const startIndex = (page - 1) * limit;
     
-    // Add filtering
-    const filter = {
+    // Build the where clause step by step
+    const whereClause = {
       deleted_at: null // Only get non-deleted problems
     };
+    
+    // Difficulty filter
     if (req.query.difficulty) {
-      filter.difficulty = req.query.difficulty;
+      whereClause.difficulty = req.query.difficulty;
     }
     
-    // Get problems with count
-    const { count, rows: problems } = await Problem.findAndCountAll({
-      where: filter,
+    // Search filter
+    if (req.query.search) {
+      const searchTerm = req.query.search.trim();
+      if (searchTerm) {
+        whereClause[Op.or] = [
+          { title: { [Op.like]: `%${searchTerm}%` } },
+          { description: { [Op.like]: `%${searchTerm}%` } }
+        ];
+      }
+    }
+    
+    // Add sorting
+    const sortBy = req.query.sortBy || 'created_at';
+    const sortOrder = req.query.sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    
+    // Validate sortBy field to prevent SQL injection
+    const allowedSortFields = ['title', 'difficulty', 'points', 'time_limit_ms', 'memory_limit_kb', 'created_at', 'updated_at'];
+    const orderField = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    
+    console.log('Query parameters:', {
+      whereClause,
       limit,
       offset: startIndex,
-      order: [['created_at', 'DESC']],
+      order: [[orderField, sortOrder]]
+    });
+    
+    // Get problems with count using separate queries for better error handling
+    const count = await Problem.count({
+      where: whereClause
+    });
+    
+    const problems = await Problem.findAll({
+      where: whereClause,
+      limit,
+      offset: startIndex,
+      order: [[orderField, sortOrder]],
       attributes: { exclude: ['hidden_test_cases'] } // Don't send hidden test cases
     });
     
@@ -123,9 +156,23 @@ exports.getProblems = async (req, res, next) => {
       success: true,
       count,
       pagination,
-      problems
+      problems,
+      filters: {
+        page,
+        limit,
+        search: req.query.search || null,
+        difficulty: req.query.difficulty || null,
+        sortBy: orderField,
+        sortOrder
+      }
     });
   } catch (error) {
+    console.error('Error in getProblems:', error);
+    console.error('Error details:', {
+      message: error.message,
+      sql: error.sql,
+      parameters: error.parameters
+    });
     next(error);
   }
 };
