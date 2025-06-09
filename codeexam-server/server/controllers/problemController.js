@@ -86,7 +86,9 @@ exports.getProblems = async (req, res, next) => {
     const startIndex = (page - 1) * limit;
     
     // Add filtering
-    const filter = {};
+    const filter = {
+      deleted_at: null // Only get non-deleted problems
+    };
     if (req.query.difficulty) {
       filter.difficulty = req.query.difficulty;
     }
@@ -144,7 +146,7 @@ exports.getProblem = async (req, res, next) => {
       attributes: { exclude: ['hidden_test_cases'] } // Don't send hidden test cases to regular users
     });
     
-    if (!problem) {
+    if (!problem || problem.deleted_at) {
       return res.status(404).json({
         success: false,
         message: 'Problem not found'
@@ -162,6 +164,13 @@ exports.getProblem = async (req, res, next) => {
           }
         ]
       });
+      
+      if (!fullProblem || fullProblem.deleted_at) {
+        return res.status(404).json({
+          success: false,
+          message: 'Problem not found'
+        });
+      }
       
       return res.status(200).json({
         success: true,
@@ -263,6 +272,14 @@ exports.deleteProblem = async (req, res, next) => {
       });
     }
     
+    // Check if problem is already deleted
+    if (problem.deleted_at) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found'
+      });
+    }
+    
     // Check if user is creator, admin, or judge
     if (
       problem.created_by !== req.user.id && 
@@ -275,7 +292,8 @@ exports.deleteProblem = async (req, res, next) => {
       });
     }
     
-    await problem.destroy();
+    // Soft delete - set deleted_at timestamp
+    await problem.update({ deleted_at: new Date() });
     
     res.status(200).json({
       success: true,
