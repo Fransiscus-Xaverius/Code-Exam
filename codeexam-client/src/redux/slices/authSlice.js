@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import CryptoJS from 'crypto-js';
 
-const SECRET_KEY = import.meta.env.VITE_APP_SECRET_KEY|| 'default_fallback_key';
+const SECRET_KEY = import.meta.env.VITE_APP_SECRET_KEY || 'default_fallback_key';
 
 const encryptData = (data) => {
   return CryptoJS.AES.encrypt(JSON.stringify(data), SECRET_KEY).toString();
@@ -43,7 +43,7 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.userRole = action.payload.user.role;
       state.token = action.payload.token;
-      
+
       // Encrypt and store user data
       localStorage.setItem('codeexam_token', action.payload.token);
       localStorage.setItem('user', encryptData(action.payload.user));
@@ -64,16 +64,18 @@ const authSlice = createSlice({
       localStorage.removeItem('user');
       localStorage.removeItem('userRole');
     },
-    toggleUserRole: (state) => {
-      if (state.userRole === 'competitor') state.userRole = 'admin';
-      else if (state.userRole === 'admin') state.userRole = 'judge';
-      else state.userRole = 'competitor';
-      
-      // Encrypt and persist role change
-      localStorage.setItem('userRole', encryptData(state.userRole));
-    }
+    // toggleUserRole: (state) => {
+    //   if (state.userRole === 'competitor') state.userRole = 'admin';
+    //   else if (state.userRole === 'admin') state.userRole = 'judge';
+    //   else state.userRole = 'competitor';
+
+    //   // Encrypt and persist role change
+    //   localStorage.setItem('userRole', encryptData(state.userRole));
+    // }
   }
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, toggleUserRole } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout,
+  // toggleUserRole
+} = authSlice.actions;
 export default authSlice.reducer;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   UserCircle, Code, Trophy, Users, Settings, Database, CheckCircle,
   HelpCircle, LogOut, Edit, Trash2, Plus, Search, Filter, Menu, X,
   ChevronDown, FileText, Clock, Calendar, AlertTriangle, BarChart2
@@ -7,7 +7,10 @@ import {
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { toggleUserRole, logout } from '../redux/slices/authSlice';
+import {
+  // toggleUserRole,
+  logout
+} from '../redux/slices/authSlice';
 
 // // Component imports
 import Sidebar from '../components/Sidebar';
@@ -105,7 +108,7 @@ const CodeExamDashboard = () => {
           const submissionsResponse = await API.get('/api/submissions/pending', {
             headers: { Authorization: token ? `Bearer ${token}` : '' }
           });
-          
+
           if (submissionsResponse.data.success) {
             setPendingSubmissions(submissionsResponse.data.count || 0);
           }
@@ -120,7 +123,7 @@ const CodeExamDashboard = () => {
           const competitionsResponse = await API.get('/api/competitions/active', {
             headers: { Authorization: token ? `Bearer ${token}` : '' }
           });
-          
+
           if (competitionsResponse.data.success && competitionsResponse.data.competition) {
             setActiveCompetition(competitionsResponse.data.competition);
           } else {
@@ -171,7 +174,7 @@ const CodeExamDashboard = () => {
         const now = new Date().getTime();
         const startTime = new Date(competition.start_time).getTime();
         const endTime = new Date(competition.end_time).getTime();
-        
+
         if (now < startTime) {
           // Competition hasn't started yet
           setStatus('upcoming');
@@ -320,7 +323,7 @@ const CodeExamDashboard = () => {
     let title = "Problems";
     let description = "";
 
-    switch(userRole) {
+    switch (userRole) {
       case 'competitor':
         title = "Problem Dashboard";
         description = "Solve problems and improve your coding skills";
@@ -353,14 +356,14 @@ const CodeExamDashboard = () => {
               onClick={handleAddNewProblem}
               className="w-full sm:w-auto group relative inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base font-medium text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
             >
-              <Plus 
-                size={18} 
-                className="mr-2 transition-transform group-hover:rotate-90 duration-300" 
+              <Plus
+                size={18}
+                className="mr-2 transition-transform group-hover:rotate-90 duration-300"
               />
               <span>Add New Problem</span>
             </Button>
           )}
-          
+
           {userRole === 'judge' && pendingSubmissions > 0 && (
             <Button
               onClick={handleReviewSubmissions}
@@ -508,13 +511,13 @@ const CodeExamDashboard = () => {
               <span>Settings</span>
             </a>
 
-            <button
+            {/* <button
               onClick={handleToggleRole}
               className="flex w-full items-center p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
             >
               <UserCircle className="mr-3" size={20} />
               <span>Switch Role</span>
-            </button>
+            </button> */}
 
             <button
               onClick={handleLogout}
@@ -539,7 +542,7 @@ const CodeExamDashboard = () => {
   }, [token, userRole, searchTerm, difficultyFilter, sortBy, sortOrder, currentPage, navigate]);
 
   const handleToggleRole = () => {
-    dispatch(toggleUserRole());
+    // dispatch(toggleUserRole());
   };
 
   const handleLogout = () => {
@@ -575,7 +578,7 @@ const CodeExamDashboard = () => {
 
       {/* Mobile Sidebar */}
       <MobileSidebar />
-      
+
       {/* Main Content */}
       <div className="flex-1 md:ml-64">
         {/* Mobile Header */}
@@ -596,20 +599,20 @@ const CodeExamDashboard = () => {
             <div className="w-10"></div>
           </div>
         </div>
-        
+
         {/* Main Content */}
         <div className="p-4">
           <div className="max-w-7xl mx-auto">
             {/* Dashboard header with title and main action button */}
             {renderDashboardHeader()}
-            
+
             {/* Role-specific content sections */}
             {userRole === 'competitor' && activeCompetition && renderActiveCompetition()}
             {userRole === 'judge' && renderJudgeSummary()}
-            
+
             {/* Filters section */}
             {renderFilters()}
-            
+
             {/* Problems list */}
             <ProblemsList
               problems={problems}
