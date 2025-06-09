@@ -60,11 +60,16 @@ const SubmissionDetailsPage = () => {
           if (submissionData.test_results) {
             try {
               const testResults = JSON.parse(submissionData.test_results);
-              const initialOpenState = {};
-              testResults.forEach((_, index) => {
-                initialOpenState[index] = false;
-              });
-              setTestDetailsOpen(initialOpenState);
+              // Ensure testResults is an array
+              if (Array.isArray(testResults)) {
+                const initialOpenState = {};
+                testResults.forEach((_, index) => {
+                  initialOpenState[index] = false;
+                });
+                setTestDetailsOpen(initialOpenState);
+              } else {
+                console.error('Test results is not an array:', testResults);
+              }
             } catch (e) {
               console.error('Error parsing test results:', e);
             }
@@ -227,7 +232,14 @@ const SubmissionDetailsPage = () => {
     if (!submission || !submission.test_results) return [];
     
     try {
-      return JSON.parse(submission.test_results);
+      const parsed = JSON.parse(submission.test_results);
+      // Ensure the parsed data is an array
+      if (Array.isArray(parsed)) {
+        return parsed;
+      } else {
+        console.error('Test results is not an array:', parsed);
+        return [];
+      }
     } catch (e) {
       console.error('Error parsing test results:', e);
       return [];
