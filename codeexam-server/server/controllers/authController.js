@@ -57,7 +57,8 @@ exports.login = async (req, res, next) => {
       status: user.status,
       first_name: user.first_name,
       last_name: user.last_name,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      discuss: user.discuss
     };
 
     res.status(200).json({

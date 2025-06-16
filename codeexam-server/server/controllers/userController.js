@@ -241,7 +241,7 @@ exports.createUser = async (req, res, next) => {
 // @access  Private (Admin only)
 exports.updateUser = async (req, res, next) => {
   try {
-    const { username, email, first_name, last_name, role, password } = req.body;
+    const { username, email, first_name, last_name, role, password, discuss } = req.body;
     
     const user = await User.findByPk(req.params.id);
     
@@ -260,6 +260,7 @@ exports.updateUser = async (req, res, next) => {
     if (first_name !== undefined) updateData.first_name = first_name;
     if (last_name !== undefined) updateData.last_name = last_name;
     if (role) updateData.role = role;
+    if (discuss !== undefined) updateData.discuss = discuss;
     
     // Hash new password if provided
     if (password) {

@@ -59,6 +59,11 @@ const User = db.define('user', {
       }
     }
   },
+  discuss: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false
+  },
 }, {
   tableName: 'users',
   timestamps: true,

@@ -87,8 +87,10 @@ const UserManagementPage = () => {
     password: '',
     first_name: '',
     last_name: '',
-    role: 'competitor'
+    role: 'competitor',
+    discuss: false  // Add this line
   });
+
   const [warningData, setWarningData] = useState({
     reason: '',
     sendEmail: true
@@ -127,7 +129,8 @@ const UserManagementPage = () => {
       password: '',
       first_name: '',
       last_name: '',
-      role: 'competitor'
+      role: 'competitor',
+      discuss: false  // Add this line
     });
   };
 
@@ -201,7 +204,8 @@ const UserManagementPage = () => {
       password: '',
       first_name: user.first_name || '',
       last_name: user.last_name || '',
-      role: user.role
+      role: user.role,
+      discuss: user.discuss || false  // Add this line
     });
     setSelectedUser(user);
     setShowEditModal(true);
@@ -269,6 +273,12 @@ const UserManagementPage = () => {
     setUserOperationError(null);
     setStatusError(null);
     setWarningError(null);
+  };
+
+  const getDiscussBadgeClass = (discuss) => {
+    return discuss 
+    ? 'bg-green-100 text-green-800 border-green-200'
+    : 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
   // Render status actions dropdown
@@ -417,6 +427,9 @@ const UserManagementPage = () => {
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
             </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Discussion
+                        </th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -518,10 +531,26 @@ const UserManagementPage = () => {
                           {user.status !== 'inactive' && <option value="inactive">Deactivate</option>}
                           {user.status !== 'banned' && <option value="banned">Ban</option>}
                         </select>
+                        
                       </div>
                     </>
                   )}
                 </div>
+              </td>
+              <td className="px-4 py-4 whitespace-nowrap">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getDiscussBadgeClass(user.discuss)}`}>
+                  {user.discuss ? (
+                    <>
+                      <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                      Enabled
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 bg-gray-500 rounded-full mr-1"></span>
+                      Disabled
+                    </>
+                  )}
+                </span>
               </td>
             </tr>
           ))}
@@ -904,6 +933,25 @@ const UserManagementPage = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder={showEditModal ? "Enter new password" : "Enter password"}
             />
+          </div>
+
+          <div className="col-span-1 sm:col-span-2">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="discuss"
+                id="discuss"
+                checked={formData.discuss}
+                onChange={(e) => setFormData(prev => ({ ...prev, discuss: e.target.checked }))}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="discuss" className="ml-2 block text-sm text-gray-900">
+                Enable discussion forum access
+              </label>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Allow this user to participate in discussion forums
+            </p>
           </div>
         </div>
       </div>

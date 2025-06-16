@@ -19,31 +19,57 @@ const Sidebar = () => {
 
   // Define navigation items based on user role
   const getNavigationItems = (role) => {
-    const commonItems = [
-      {
-        icon: <Database className="h-5 w-5" />,
-        label: 'Problems',
-        path: '/dashboard',
-        active: location.pathname === '/dashboard' || location.pathname === '/'
-      },
-      {
-        icon: <Trophy className="h-5 w-5" />,
-        label: 'Competitions',
-        path: '/competitions',
-        active: location.pathname.startsWith('/competitions')
-      },
-      {
-        icon: <BookOpen className='h-5 w-5' />,
-        label: 'Discussions',
-        path: '/discussions',
-        active: location.pathname === '/discussions'
-      },
-      {
-        icon: <User className='h-5 w-5' />,
-        label: 'Profile',
-        path: '/profile'
-      }
-    ];
+    let commonItems = [];
+
+    console.log(user)
+
+    if(user.discuss) {
+          commonItems = [
+            {
+              icon: <Database className="h-5 w-5" />,
+              label: 'Problems',
+              path: '/dashboard',
+              active: location.pathname === '/dashboard' || location.pathname === '/'
+            },
+            {
+              icon: <Trophy className="h-5 w-5" />,
+              label: 'Competitions',
+              path: '/competitions',
+              active: location.pathname.startsWith('/competitions')
+            },
+            {
+              icon: <BookOpen className='h-5 w-5' />,
+              label: 'Discussions',
+              path: '/discussions',
+              active: location.pathname === '/discussions'
+            },
+            {
+              icon: <User className='h-5 w-5' />,
+              label: 'Profile',
+              path: '/profile'
+            }
+          ]
+    } else {
+        commonItems = [
+          {
+            icon: <Database className="h-5 w-5" />,
+            label: 'Problems',
+            path: '/dashboard',
+            active: location.pathname === '/dashboard' || location.pathname === '/'
+          },
+          {
+            icon: <Trophy className="h-5 w-5" />,
+            label: 'Competitions',
+            path: '/competitions',
+            active: location.pathname.startsWith('/competitions')
+          },
+          {
+            icon: <User className='h-5 w-5' />,
+            label: 'Profile',
+            path: '/profile'
+          }
+        ] 
+    }
 
     const roleSpecificItems = {
       competitor: [

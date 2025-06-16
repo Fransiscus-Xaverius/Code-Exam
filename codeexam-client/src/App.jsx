@@ -77,11 +77,11 @@ const AppRoutes = () => {
         </PublicRoute>
       } />
 
-      <Route path="/register" element={
+      {/* <Route path="/register" element={
         <PublicRoute>
           <RegisterPage />
         </PublicRoute>
-      } />
+      } /> */}
 
       <Route path="/404" element={
         <PublicRoute>

@@ -26,7 +26,8 @@ const initialState = {
   user: storedUser ? decryptData(storedUser) : null,
   token: localStorage.getItem('codeexam_token') || null,
   loading: false,
-  error: null
+  error: null,
+  discuss: true, // Default to true for discussion feature
 };
 
 const authSlice = createSlice({
@@ -38,11 +39,14 @@ const authSlice = createSlice({
       state.error = null;
     },
     loginSuccess: (state, action) => {
+      console.log('Login successful:', action.payload);
+
       state.isAuthenticated = true;
       state.loading = false;
       state.user = action.payload.user;
       state.userRole = action.payload.user.role;
       state.token = action.payload.token;
+      state.discuss = action.payload.user.discuss !== undefined ? action.payload.user.discuss : true;
 
       // Encrypt and store user data
       localStorage.setItem('codeexam_token', action.payload.token);
