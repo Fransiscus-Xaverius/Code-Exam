@@ -109,6 +109,10 @@ const Submission = sequelize.define('Submission', {
   updated_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
+  },
+  compile_error: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   }
 }, {
   tableName: 'submissions',

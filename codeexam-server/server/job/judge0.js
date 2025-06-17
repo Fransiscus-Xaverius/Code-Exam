@@ -281,6 +281,7 @@ async function processResults(submissionId, results) {
         let hasTimeLimit = false;
         let hasMemoryLimit = false;
         let hasInternalError = false;
+        let compileErrorMessage = null;
 
         // Analyze results to determine status and count
         results.forEach((result, index) => {
@@ -293,6 +294,10 @@ async function processResults(submissionId, results) {
                 passedTests++;
             } else if (statusId === 6) { // Compilation Error
                 hasCompilationError = true;
+                // Extract compile error message from the first compilation error
+                if (!compileErrorMessage && result.compile_output) {
+                    compileErrorMessage = decodeFromBase64(result.compile_output);
+                }
             } else if (statusId === 5) { // Time Limit Exceeded
                 hasTimeLimit = true;
             } else if (statusId === 4) { // Wrong Answer
@@ -343,20 +348,30 @@ async function processResults(submissionId, results) {
             message: result.message || null
         }));
 
+        // Prepare update data
+        const updateData = {
+            status: finalStatus,
+            score,
+            execution_time_ms: Math.round(avgRuntime * 1000), // Convert to ms
+            memory_used_kb: Math.round(avgMemory),
+            test_results: JSON.stringify(testResults),
+            judged_at: new Date()
+        };
+
+        // Add compile error message if there was a compilation error
+        if (hasCompilationError && compileErrorMessage) {
+            updateData.compile_error = compileErrorMessage;
+            console.log(`[Judge0] Compilation error detected for submission ${submissionId}:`, compileErrorMessage);
+        }
+
         // Update submission with results
-        await Submission.update(
-            {
-                status: finalStatus,
-                score,
-                execution_time_ms: Math.round(avgRuntime * 1000), // Convert to ms
-                memory_used_kb: Math.round(avgMemory),
-                test_results: JSON.stringify(testResults),
-                judged_at: new Date()
-            },
-            { where: { id: submissionId } }
-        );
+        await Submission.update(updateData, { where: { id: submissionId } });
 
         console.log(`[Judge0] Processed results for submission ${submissionId}: status=${finalStatus}, score=${score}/${problem.points} (${Math.round(passedPercentage * 100)}% of tests passed)`);
+        
+        if (hasCompilationError) {
+            console.log(`[Judge0] Compilation error stored for submission ${submissionId}`);
+        }
     } catch (error) {
         console.error(`[Judge0] Error processing results for submission ${submissionId}:`, error);
         await updateSubmissionError(submissionId, 'Error processing judge results');

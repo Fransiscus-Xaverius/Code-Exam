@@ -164,6 +164,7 @@ const checkRunCodeStatus = async () => {
       setTimeout(() => checkRunCodeStatus(), 10);
     } else {
       console.log(response.data.submission.status)
+      console.log(response.data)
       // Process completed results
       const status = response.data.submission.status;
       const runtime = response.data.submission.execution_time_ms || response.data.submission.runtime_ms;
@@ -179,6 +180,7 @@ const checkRunCodeStatus = async () => {
         try {
           const testResults = JSON.parse(response.data.submission.test_results);
           resultOutput += 'Test Results:\n';
+          console.log(response.data.submission.compile_error)
           testResults.forEach((result, index) => {
             resultOutput += `Test #${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}\n`;
             if (result.input) resultOutput += `  Input: ${result.input}\n`;
@@ -188,6 +190,9 @@ const checkRunCodeStatus = async () => {
             resultOutput += `  Memory: ${result.memory_kb}KB\n`;
             if (!result.passed && result.error) {
               resultOutput += `  Error: ${result.error}\n`;
+            }
+            if(response.data.submission.compile_error) {
+              resultOutput += `  Compile Error: ${response.data.submission.compile_error}\n`;
             }
             resultOutput += '\n';
           });
@@ -285,11 +290,15 @@ useEffect(() => {
         if (response.data.submission.test_results) {
           try {
             const testResults = JSON.parse(response.data.submission.test_results);
+            console.log("KONTOLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL", response.data.submission.compile_error)
             resultMessage += "Test Results:\n";
             testResults.forEach((result, index) => {
               resultMessage += `Test #${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}\n`;
               if (!result.passed && result.error) {
                 resultMessage += `  Error: ${result.error}\n`;
+              } 
+              if(response.data.submission.compile_error) {
+                resultMessage += `  Compile Error: ${response.data.submission.compile_error}\n`;
               }
             });
           } catch (e) {
