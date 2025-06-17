@@ -8,6 +8,7 @@ const { submitToJudge0 } = require('../job/judge0');
 const CompetitionProblem = require('../models/CompetitionProblem');
 const CompetitionParticipant = require('../models/CompetitionParticipant');
 const Sequelize = require('sequelize');
+const { get } = require('../routes/submission');
 const { Op } = Sequelize;
 
 // Helper function to get submission for like functionality
@@ -21,6 +22,16 @@ exports.getSubmissionForLike = async (submissionId) => {
     return null;
   }
 };
+
+function getHalfArray(arr) {
+    if (!Array.isArray(arr)) {
+        console.error("Input is not an array.");
+        return [];
+    }
+
+    const mid = Math.ceil(arr.length / 2); // round up if odd number of items
+    return arr.slice(0, mid); // return the first half
+}
 
 // @desc    Submit a solution to a problem
 // @route   POST /api/submissions
@@ -93,8 +104,10 @@ exports.createSubmission = async (req, res, next) => {
     const timeLimit = ((parseInt(problem.time_limit_ms) || 1000) / 1000).toFixed(1);
     const memoryLimit = problem.memory_limit_kb || 128000;
 
+    let testCases = getHalfArray(problem.hidden_test_cases);
+    console.log('------------------------------------------------------------------------------------------', testCases);
     // Submit to judge system
-    submitToJudge0(submission.id, code, language, problem.hidden_test_cases, timeLimit, memoryLimit);
+    submitToJudge0(submission.id, code, language, testCases, timeLimit, memoryLimit);
 
     console.log('Submission process completed successfully');
     res.status(201).json({
