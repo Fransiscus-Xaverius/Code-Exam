@@ -21,7 +21,8 @@ exports.createCompetition = async (req, res, next) => {
       end_time, 
       is_public, 
       registration_required, 
-      leaderboard_visible 
+      leaderboard_visible,
+      test_time_limit
     } = req.body;
     
     // Validate required fields
@@ -59,6 +60,7 @@ exports.createCompetition = async (req, res, next) => {
       is_public: is_public !== undefined ? is_public : true,
       registration_required: registration_required !== undefined ? registration_required : true,
       leaderboard_visible: leaderboard_visible !== undefined ? leaderboard_visible : true,
+      test_time_limit: test_time_limit || null,
       created_by: req.user.id
     });
     
@@ -336,7 +338,8 @@ exports.updateCompetition = async (req, res, next) => {
       end_time, 
       is_public, 
       registration_required, 
-      leaderboard_visible 
+      leaderboard_visible,
+      test_time_limit
     } = req.body;
     
     // Validate dates if provided
@@ -401,7 +404,8 @@ exports.updateCompetition = async (req, res, next) => {
       end_time: end_time ? new Date(end_time) : competition.end_time,
       is_public: is_public !== undefined ? is_public : competition.is_public,
       registration_required: registration_required !== undefined ? registration_required : competition.registration_required,
-      leaderboard_visible: leaderboard_visible !== undefined ? leaderboard_visible : competition.leaderboard_visible
+      leaderboard_visible: leaderboard_visible !== undefined ? leaderboard_visible : competition.leaderboard_visible,
+      test_time_limit: test_time_limit !== undefined ? test_time_limit : competition.test_time_limit
     });
     
     res.status(200).json({
@@ -916,6 +920,12 @@ exports.getCompetitionWorkspace = async (req, res, next) => {
     // Get user's submission status for each problem
     const submissionStatuses = await exports.getUserSubmissionStatuses(userId, id);
 
+    // Get participant's test start time if available
+    let testStartTime = null;
+    if (participant) {
+      testStartTime = participant.test_start_time;
+    }
+
     // Return workspace data
     res.json({
       success: true,
@@ -926,8 +936,10 @@ exports.getCompetitionWorkspace = async (req, res, next) => {
           description: competition.description,
           start_time: competition.start_time,
           end_time: competition.end_time,
-          leaderboard_visible: competition.leaderboard_visible
+          leaderboard_visible: competition.leaderboard_visible,
+          test_time_limit: competition.test_time_limit
         },
+        testStartTime,
         problems: problems.map(p => ({
           id: p.id,
           problem_id: p.problem_id,
@@ -1432,6 +1444,71 @@ exports.getCompetitionSubmissions = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error getting competition submissions:', error);
+    next(error);
+  }
+};
+
+// @desc    Start the test timer for a participant
+// @route   POST /api/competitions/:id/start-test
+// @access  Private
+exports.startCompetitionTest = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { startTime } = req.body;
+
+    // Verify competition exists
+    const competition = await Competition.findByPk(id);
+    if (!competition) {
+      return res.status(404).json({
+        success: false,
+        message: 'Competition not found'
+      });
+    }
+
+    // Check if competition has a test time limit
+    if (!competition.test_time_limit) {
+      return res.status(400).json({
+        success: false,
+        message: 'This competition does not have a test time limit'
+      });
+    }
+
+    // Check if user is registered for competition
+    const participant = await CompetitionParticipant.findOne({
+      where: { competition_id: id, user_id: userId }
+    });
+
+    if (!participant && !req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not registered for this competition'
+      });
+    }
+
+    // Check if test has already started for this user
+    if (participant.test_start_time) {
+      return res.status(400).json({
+        success: false,
+        message: 'Test has already been started for this user'
+      });
+    }
+
+    // Update participant with test start time
+    await participant.update({
+      test_start_time: startTime || new Date()
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Test timer started successfully',
+      data: {
+        test_start_time: participant.test_start_time,
+        test_time_limit: competition.test_time_limit
+      }
+    });
+  } catch (error) {
+    console.error('Error starting test timer:', error);
     next(error);
   }
 };

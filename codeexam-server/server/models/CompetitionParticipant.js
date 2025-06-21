@@ -7,6 +7,11 @@ const CompetitionParticipant = sequelize.define('CompetitionParticipant', {
   registered_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
+  },
+  test_start_time: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When the participant started their test'
   }
 }, {
   tableName: 'competition_participants',

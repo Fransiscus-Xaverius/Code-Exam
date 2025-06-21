@@ -30,6 +30,18 @@ const CompetitionWorkspacePage = () => {
     problemsSolved: 0,
     totalProblems: 0
   });
+  // Competition time tracking
+  const [userStartTime, setUserStartTime] = useState(null);
+  const [userTimeLimit, setUserTimeLimit] = useState(null); // in minutes
+  const [userTimeRemaining, setUserTimeRemaining] = useState(null);
+  const [hasStarted, setHasStarted] = useState(false);
+  
+  // Test time tracking (separate from competition time)
+  const [testStartTime, setTestStartTime] = useState(null);
+  const [testTimeLimit, setTestTimeLimit] = useState(null); // Will be set from API
+  const [testTimeRemaining, setTestTimeRemaining] = useState('00:00:00');
+  const [testHasStarted, setTestHasStarted] = useState(false);
+  const [testTimerKey, setTestTimerKey] = useState(0); // Force re-render key
   
   // State for leaderboard
   const [leaderboard, setLeaderboard] = useState([]);
@@ -60,6 +72,55 @@ const CompetitionWorkspacePage = () => {
     return `${diffHrs.toString().padStart(2, '0')}:${diffMins.toString().padStart(2, '0')}:${diffSecs.toString().padStart(2, '0')}`;
   };
   
+  const getStorageKey = (competitionId, type = 'competition') => `${type}_timer_${competitionId}`;
+
+  const formatUserTimeRemaining = () => {
+    if (!userStartTime || !userTimeLimit) return '';
+    
+    const now = new Date();
+    const start = new Date(userStartTime);
+    const timeElapsed = now - start;
+    const totalTimeMs = userTimeLimit * 60 * 1000; // convert minutes to milliseconds
+    const remainingMs = totalTimeMs - timeElapsed;
+    
+    if (remainingMs <= 0) {
+      return 'Time expired';
+    }
+    
+    const remainingHrs = Math.floor(remainingMs / (1000 * 60 * 60));
+    const remainingMins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+    const remainingSecs = Math.floor((remainingMs % (1000 * 60)) / 1000);
+    
+    return `${remainingHrs.toString().padStart(2, '0')}:${remainingMins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
+  };
+  
+  // Helper function to check if test time has expired
+  const isTestTimeExpired = () => {
+    if (!testStartTime || !testTimeLimit) return false;
+    
+    const now = new Date();
+    const start = new Date(testStartTime);
+    const timeElapsed = now - start;
+    const totalTimeMs = testTimeLimit * 60 * 1000;
+    
+    return timeElapsed >= totalTimeMs;
+  };
+
+  // Load test time from local storage on component mount
+  useEffect(() => {
+    if (id) {
+      const storedTestStartTime = localStorage.getItem(getStorageKey(id, 'test'));
+      if (storedTestStartTime) {
+        const startTime = new Date(storedTestStartTime);
+        setTestStartTime(startTime);
+        setTestHasStarted(true);
+        setTestTimerKey(prev => prev + 1); // Force immediate update
+        
+        console.log('Loaded test start time from storage:', startTime);
+      }
+    }
+  }, [id]);
+
   // Get workspace data
   useEffect(() => {
     const fetchWorkspaceData = async () => {
@@ -81,6 +142,27 @@ const CompetitionWorkspacePage = () => {
             problemsSolved: 0,
             totalProblems: (data.problems || []).length
           });
+          
+          // Set competition time data
+          if (data.userStartTime) {
+            setUserStartTime(data.userStartTime);
+            setUserTimeLimit(data.userTimeLimit || data.competition?.time_limit);
+            setHasStarted(true);
+          }
+          
+          // Set test time limit from competition data
+          if (data.competition?.test_time_limit) {
+            console.log('Setting test time limit from API:', data.competition.test_time_limit);
+            setTestTimeLimit(data.competition.test_time_limit);
+          }
+          
+          // Set test time data (if available)
+          if (data.testStartTime) {
+            console.log('Setting test start time from API:', data.testStartTime);
+            setTestStartTime(new Date(data.testStartTime));
+            setTestHasStarted(true);
+            setTestTimerKey(prev => prev + 1); // Force immediate update
+          }
           
           // Set error to null as we've successfully loaded the data
           setError(null);
@@ -105,6 +187,57 @@ const CompetitionWorkspacePage = () => {
     // Clean up interval
     return () => clearInterval(intervalId);
   }, [id, token]);
+  
+  // Update test time remaining with a direct timer approach
+  useEffect(() => {
+    let timerInterval;
+    
+    if (testStartTime && testTimeLimit) {
+      // Calculate and update immediately
+      updateTestTimeRemaining();
+      
+      // Then set up interval for updates
+      timerInterval = setInterval(updateTestTimeRemaining, 1000);
+    }
+    
+    function updateTestTimeRemaining() {
+      const now = new Date();
+      const start = new Date(testStartTime);
+      const timeElapsed = now - start;
+      const totalTimeMs = testTimeLimit * 60 * 1000; // convert minutes to milliseconds
+      const remainingMs = totalTimeMs - timeElapsed;
+      
+      if (remainingMs <= 0) {
+        setTestTimeRemaining('Test time expired');
+        clearInterval(timerInterval);
+        return;
+      }
+      
+      const remainingHrs = Math.floor(remainingMs / (1000 * 60 * 60));
+      const remainingMins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+      const remainingSecs = Math.floor((remainingMs % (1000 * 60)) / 1000);
+      
+      const formattedTime = `${remainingHrs.toString().padStart(2, '0')}:${remainingMins.toString().padStart(2, '0')}:${remainingSecs.toString().padStart(2, '0')}`;
+      setTestTimeRemaining(formattedTime);
+      
+      // Force re-render by updating the timer key
+      setTestTimerKey(prev => prev + 1);
+    }
+    
+    return () => {
+      if (timerInterval) clearInterval(timerInterval);
+    };
+  }, [testStartTime, testTimeLimit]);
+  
+  // Debug logging for test time values
+  useEffect(() => {
+    console.log('Test time values:', { 
+      testTimeLimit, 
+      testStartTime: testStartTime ? testStartTime.toString() : null,
+      testHasStarted,
+      testTimeRemaining
+    });
+  }, [testTimeLimit, testStartTime, testHasStarted, testTimeRemaining]);
   
   // Get leaderboard data when activeTab is 'leaderboard'
   useEffect(() => {
@@ -137,8 +270,42 @@ const CompetitionWorkspacePage = () => {
   };
   
   // Navigate to problem solving page
-  const handleSolveProblem = (problem) => {
+  const handleSolveProblem = async (problem) => {
     if (!problem) return;
+    
+    // Check if test time has expired using direct calculation
+    if (testHasStarted && testTimeRemaining === 'Test time expired') {
+      // Show an alert or notification that test time has expired
+      alert("Your test time has expired. You can no longer solve problems in this competition.");
+      return;
+    }
+    
+    // If test hasn't started yet, start the test timer
+    if (!testHasStarted && testTimeLimit) {
+      // Start the test timer
+      const now = new Date();
+      console.log('Starting test timer with time limit:', testTimeLimit);
+      
+      setTestStartTime(now);
+      setTestHasStarted(true);
+      setTestTimerKey(prev => prev + 1); // Force immediate update
+      
+      // Store test start time in local storage
+      localStorage.setItem(getStorageKey(id, 'test'), now.toISOString());
+      
+      // Call API to start test on the server
+      const headers = { Authorization: token ? `Bearer ${token}` : '' };
+      try {
+        const response = await API.post(`/api/competitions/${id}/start-test`, {
+          startTime: now.toISOString()
+        }, { headers });
+        
+        console.log('Test start API response:', response.data);
+      } catch (err) {
+        console.error('Error notifying backend about test start:', err);
+        // Continue anyway as we've already started the timer locally
+      }
+    }
     
     // Navigate based on problem type
     if (problem.problem_type === 'frontend') {
@@ -261,15 +428,18 @@ const CompetitionWorkspacePage = () => {
               </div>
 
               <div className="flex items-center space-x-3">
-                <div className="bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Time Remaining</div>
-                  <div className="flex items-center">
-                    <Clock size={16} className="text-blue-600 mr-2" />
-                    <span className="text-lg font-mono font-bold text-blue-800">
-                      {formatTimeRemaining(competition?.end_time)}
-                    </span>
+                {/* Test Time Display - only show if test time limit is set */}
+                {testTimeLimit ? (
+                  <div className="bg-purple-50 px-3 py-2 rounded-lg border border-purple-100">
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Test Time</div>
+                    <div className="flex items-center">
+                      <Clock size={16} className="text-purple-600 mr-2" />
+                      <span className="text-lg font-mono font-bold text-purple-800">
+                        {testHasStarted ? testTimeRemaining : `${testTimeLimit}:00:00`}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                ) : null}
                 
                 <div className="bg-blue-50 px-3 py-2 rounded-lg border border-blue-100">
                   <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Your Score</div>
@@ -533,14 +703,28 @@ const CompetitionWorkspacePage = () => {
                         </div>
                         
                         <div className="mt-8">
-                          <Button
-                            onClick={() => handleSolveProblem(currentProblem)}
-                            className="w-full sm:w-auto flex items-center justify-center"
-                            size="lg"
-                          >
-                            Solve This Problem
-                            <ArrowRight size={18} className="ml-2" />
-                          </Button>
+                          {testHasStarted && testTimeRemaining === 'Test time expired' ? (
+                            <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-4">
+                              <div className="flex items-center">
+                                <XCircle size={20} className="text-red-600 mr-2" />
+                                <div>
+                                  <p className="font-medium text-red-800">Test time has expired</p>
+                                  <p className="text-sm text-red-700">
+                                    Your allocated test time has ended. You can no longer solve problems in this competition.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              onClick={() => handleSolveProblem(currentProblem)}
+                              className="w-full sm:w-auto flex items-center justify-center"
+                              size="lg"
+                            >
+                              {!testHasStarted ? 'Start Test & Solve' : 'Solve This Problem'}
+                              <ArrowRight size={18} className="ml-2" />
+                            </Button>
+                          )}
                         </div>
                         
                         {/* Mobile Navigation Buttons */}
@@ -674,7 +858,10 @@ const CompetitionWorkspacePage = () => {
                   <div className="prose max-w-none">
                     <h3>How the Competition Works</h3>
                     <ul>
-                      <li><strong>Time Limit:</strong> This competition ends at {new Date(competition?.end_time).toLocaleString()}</li>
+                      <li><strong>Competition Time:</strong> This competition ends at {new Date(competition?.end_time).toLocaleString()}</li>
+                      {testTimeLimit ? (
+                        <li><strong>Test Time Limit:</strong> You have {testTimeLimit} minutes to complete the test once you start. Your timer will begin when you click "Start Test & Solve" on your first problem.</li>
+                      ) : null}
                       <li><strong>Scoring:</strong> Each problem has assigned points based on its difficulty</li>
                       <li><strong>Problem Types:</strong> You'll encounter both coding problems and frontend implementation challenges</li>
                       <li><strong>Submissions:</strong> You can submit multiple times, but only your highest-scoring submission counts</li>

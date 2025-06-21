@@ -20,7 +20,8 @@ const {
   getCompetitionProblemDetails,
   submitCompetitionSolution,
   runCompetitionCode,
-  getCompetitionSubmissions
+  getCompetitionSubmissions,
+  startCompetitionTest
 } = require('../controllers/competitionController');
 
 // @route   POST /api/competitions
@@ -122,5 +123,10 @@ router.post('/:id/problems/:problemId/run-code', protect(), runCompetitionCode);
 // @desc    Get user's competition submissions
 // @access  Private
 router.get('/:id/submissions', protect(), getCompetitionSubmissions);
+
+// @route   POST /api/competitions/:id/start-test
+// @desc    Start the test timer for a participant
+// @access  Private
+router.post('/:id/start-test', protect(), startCompetitionTest);
 
 module.exports = router;

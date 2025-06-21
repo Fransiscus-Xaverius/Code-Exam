@@ -51,6 +51,11 @@ const Competition = sequelize.define('Competition', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
+  test_time_limit: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Test time limit in minutes'
+  },
   created_by: {
     type: DataTypes.INTEGER,
     allowNull: true,

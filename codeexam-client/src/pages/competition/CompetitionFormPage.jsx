@@ -34,7 +34,8 @@ const CompetitionFormPage = () => {
     end_time: new Date(new Date().setHours(new Date().getHours() + 3)),
     is_public: true,
     registration_required: true,
-    leaderboard_visible: true
+    leaderboard_visible: true,
+    test_time_limit: 60 // Default to 60 minutes
   });
 
   // Problem management state
@@ -86,7 +87,8 @@ const CompetitionFormPage = () => {
         end_time: new Date(competition.end_time),
         is_public: competition.is_public ?? true,
         registration_required: competition.registration_required ?? true,
-        leaderboard_visible: competition.leaderboard_visible ?? true
+        leaderboard_visible: competition.leaderboard_visible ?? true,
+        test_time_limit: competition.test_time_limit ?? 60
       });
 
       // Load competition problems
@@ -158,9 +160,18 @@ const CompetitionFormPage = () => {
   // ===== FORM HANDLERS =====
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // Handle different input types
+    let processedValue = value;
+    if (type === 'checkbox') {
+      processedValue = checked;
+    } else if (name === 'test_time_limit') {
+      processedValue = value === '' ? 0 : parseInt(value, 10);
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: processedValue
     }));
 
     // Clear validation error when user types
@@ -511,6 +522,29 @@ const CompetitionFormPage = () => {
             </label>
             <p className="text-sm text-gray-500">
               Make the competition leaderboard visible to participants
+            </p>
+          </div>
+        </div>
+        
+        {/* Test Time Limit */}
+        <div className="p-3 hover:bg-gray-50 rounded-md transition-colors">
+          <div className="flex items-center mb-2">
+            <label htmlFor="test_time_limit" className="font-medium text-gray-700">
+              Test Time Limit (minutes)
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              type="number"
+              id="test_time_limit"
+              name="test_time_limit"
+              value={formData.test_time_limit}
+              onChange={handleInputChange}
+              min="0"
+              className="w-24 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            />
+            <p className="ml-3 text-sm text-gray-500">
+              Time limit for each participant (0 = no limit)
             </p>
           </div>
         </div>
